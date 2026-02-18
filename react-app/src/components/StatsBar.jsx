@@ -1,9 +1,11 @@
-import { fmt, tapDamage, heroDps, globalMult } from '../utils/gameLogic.js';
+import { fmt, tapDamage, heroDps, globalMult, effectiveCritChance, effectiveCritMult } from '../utils/gameLogic.js';
 
 function StatsBar({ state }) {
-  const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil);
-  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil);
+  const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones);
+  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones);
   const gMult = globalMult(state.shards);
+  const critChance = effectiveCritChance(state);
+  const critMult = effectiveCritMult(state);
 
   return (
     <>
@@ -25,7 +27,7 @@ function StatsBar({ state }) {
       <div className="row">
         <div className="pill">Tap DMG: <b>{fmt(tapDmg)}</b></div>
         <div className="pill">Hero DPS: <b>{fmt(hDps)}</b></div>
-        <div className="pill">Crit: <b>{Math.round(state.critChance * 100)}%</b> × <b>{state.critMult}</b></div>
+        <div className="pill">Crit: <b>{Math.round(critChance * 100)}%</b> × <b>{critMult.toFixed(1)}</b></div>
         <div className="pill">Global: <b>{gMult.toFixed(2)}×</b></div>
       </div>
     </>

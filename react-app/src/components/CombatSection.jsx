@@ -6,17 +6,17 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
   const [bossTimer, setBossTimer] = useState(0);
 
   useEffect(() => {
-    if (!enemy.isBoss) return;
+    if (!enemy.isBoss) { setBossTimer(0); return; }
+    const effectiveBossTimeMs = BOSS_TIME_LIMIT_MS + (state.shardUpgrades?.bossTime ?? 0) * 5000;
+    const calc = () => Math.max(0, effectiveBossTimeMs - (now() - enemy.bossStartAt)) / effectiveBossTimeMs;
+    setBossTimer(calc());
     const interval = setInterval(() => {
-      const elapsed = now() - enemy.bossStartAt;
-      const remaining = Math.max(0, BOSS_TIME_LIMIT_MS - elapsed);
-      setBossTimer(remaining / BOSS_TIME_LIMIT_MS);
-      if (remaining <= 0) {
-        clearInterval(interval);
-      }
+      const remaining = calc();
+      setBossTimer(remaining);
+      if (remaining <= 0) clearInterval(interval);
     }, 100);
     return () => clearInterval(interval);
-  }, [enemy]);
+  }, [enemy.isBoss, enemy.bossStartAt, state.shardUpgrades?.bossTime]);
 
   const handleSkill = () => {
     const t = now();
@@ -43,18 +43,18 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
   };
 
   const handlePrestige = () => {
-    const earned = prestigeEarned(state.stage, state.substage);
+    const earned = prestigeEarned(state.stage, state.substage, state.shardUpgrades);
     if (earned <= 0) return;
     setState(prev => ({
       ...prev,
       shards: prev.shards + earned,
       gold: 0,
-      stage: 1,
+      stage: 1 + (prev.shardUpgrades?.headStart ?? 0),
       substage: 1,
       bossEntered: false,
       bossAttemptedThisStage: false,
       heroes: prev.heroes.map(h => ({ ...h, level: 0 })),
-      upgrades: { tap: 1, gold: 1, idle: 1 },
+      upgrades: { tap: 1, gold: 1, idle: 1, critC: 1, critM: 1 },
       lifetimeGold: 0,
       lastTick: now(),
       lastSave: now(),
@@ -74,7 +74,7 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
     ? `Cooldown: ${(Math.max(0, state.skillCooldownUntil - t)/1000).toFixed(0)}s`
     : "Cooldown: 30s";
 
-  const earn = prestigeEarned(state.stage, state.substage);
+  const earn = prestigeEarned(state.stage, state.substage, state.shardUpgrades);
 
   const isBossStage = (state.stage % 1 === 0); // every stage
   const isRound9OfBossStage = (state.substage === 9) && isBossStage;
@@ -114,7 +114,7 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
           <div className="tiny muted">{skillInfo}</div>
         </div>
 
-        {isRound9OfBossStage && !state.bossEntered && (
+        {isRound9OfBossStage && state.bossAttemptedThisStage && !state.bossEntered && (
           <div className="row" style={{ marginTop: '10px' }}>
             <button className="btn primary" onClick={handleEnterBoss}>Enter Boss Fight</button>
           </div>

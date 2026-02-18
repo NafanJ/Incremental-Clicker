@@ -21,6 +21,10 @@ export function load() {
     // Merge carefully
     const fresh = defaultState();
     const merged = { ...fresh, ...data };
+    // Deep-merge nested objects so new keys added to defaultState survive old saves
+    merged.upgrades = { ...fresh.upgrades, ...data.upgrades };
+    merged.shardUpgrades = { ...fresh.shardUpgrades, ...(data.shardUpgrades ?? {}) };
+    merged.milestones = { ...fresh.milestones, ...(data.milestones ?? {}) };
     // Ensure heroes exist and merge their levels (in case of updates)
     if (Array.isArray(data.heroes) && data.heroes.length > 0) {
       for (let i = 0; i < merged.heroes.length; i++) {
