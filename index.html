@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Idle Ascension (MVP)</title>
+  <style>
+    :root { --bg:#0b0f1a; --card:#121a2b; --ink:#e8eefc; --muted:#9fb0d0; --line:#22304f; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--ink); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+    h1 { margin: 0 0 12px; font-size: 22px; font-weight: 800; letter-spacing: .2px; }
+    .grid { display:grid; grid-template-columns: 1.1fr .9fr; gap: 12px; }
+    @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .row { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .stat { color:var(--muted); font-size: 12px; }
+    .big { font-size: 30px; font-weight: 900; letter-spacing: .3px; }
+    .btn { cursor:pointer; border:1px solid var(--line); background:#0f1730; color:var(--ink); padding:10px 12px; border-radius:12px; font-weight:700; }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: #17346a; border-color:#2a4d92; }
+    .btn.danger { background: #5b1b1b; border-color:#7a2a2a; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    .stack { display:flex; flex-direction:column; gap:10px; }
+    .progress { height:12px; background:#0a1023; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
+    .bar { height:100%; width:0%; background: linear-gradient(90deg, #2a66ff, #68d0ff); }
+    .muted { color:var(--muted); }
+    .list { display:flex; flex-direction:column; gap: 10px; }
+    .item { border:1px solid var(--line); border-radius:12px; padding:10px; background:#0e152c; }
+    .item h3 { margin:0 0 4px; font-size: 14px; }
+    .item p { margin:0; font-size: 12px; color: var(--muted); }
+    .split { display:grid; grid-template-columns: 1fr auto; gap: 8px; align-items:center; }
+    .pill { font-size: 11px; padding: 4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+    .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b8c7ea; line-height: 1.4; max-height: 170px; overflow:auto; border-radius: 12px; padding: 10px; border:1px solid var(--line); background:#07102a; }
+    .tiny { font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>Idle Ascension (MVP)</h1>
+
+  <div class="grid">
+    <!-- LEFT: Combat + economy -->
+    <div class="card stack">
+      <div class="row">
+        <div>
+          <div class="stat">Gold</div>
+          <div class="big" id="gold">0</div>
+        </div>
+        <div>
+          <div class="stat">Stage</div>
+          <div class="big"><span id="stage">1</span><span class="muted"> / </span><span id="substage">1</span></div>
+        </div>
+        <div>
+          <div class="stat">Ascension Shards</div>
+          <div class="big" id="shards">0</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="pill">Tap DMG: <b id="tapDmg">1</b></div>
+        <div class="pill">Hero DPS: <b id="heroDps">0</b></div>
+        <div class="pill">Crit: <b id="crit">10%</b> × <b id="critMult">5</b></div>
+        <div class="pill">Global: <b id="globalMult">1.00×</b></div>
+      </div>
+
+      <div class="item">
+        <div class="split">
+          <div>
+            <h3 id="enemyName">Wisp</h3>
+            <p class="tiny">
+              HP: <b><span id="hp">10</span></b> / <span id="hpMax">10</span>
+              <span class="muted">•</span>
+              Reward: <b id="reward">2</b> gold
+              <span class="muted">•</span>
+              <span id="bossTag" class="pill" style="display:none;">BOSS</span>
+            </p>
+          </div>
+          <button class="btn primary" id="tapBtn">Tap Attack</button>
+        </div>
+
+        <div class="progress" style="margin-top:10px;">
+          <div class="bar" id="hpBar"></div>
+        </div>
+
+        <div class="progress" style="margin-top:10px;" id="bossTimerRow" style="display:none;">
+          <div class="bar" id="bossTimerBar" style="background: linear-gradient(90deg, #ff6b6b, #ffa06b);"></div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="skillBtn">Power Surge (+10s)</button>
+          <div class="tiny muted" id="skillInfo">Cooldown: 30s</div>
+        </div>
+
+        <div class="row" style="margin-top:10px;" id="bossRow" style="display:none;">
+          <button class="btn primary" id="enterBossBtn">Enter Boss Fight</button>
+        </div>
+
+        <div class="row" style="margin-top:10px;" id="exitBossRow" style="display:none;">
+          <button class="btn danger" id="exitBossBtn">Exit Boss</button>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row">
+          <div>
+            <h3 style="margin:0 0 4px; font-size:14px;">Prestige</h3>
+            <p class="tiny">Reset to earn shards. Shards give permanent global damage.</p>
+          </div>
+          <button class="btn danger" id="prestigeBtn">Ascend</button>
+        </div>
+        <div class="tiny muted" id="prestigeInfo">Earn <b id="prestigeEarn">0</b> shards if you ascend now.</div>
+      </div>
+
+      <div class="log" id="log"></div>
+    </div>
+
+    <!-- RIGHT: Upgrades -->
+    <div class="card stack">
+      <div class="item">
+        <h3 style="margin:0 0 8px; font-size:14px;">Upgrades</h3>
+        <div class="list" id="upgrades"></div>
+      </div>
+
+      <div class="item">
+        <h3 style="margin:0 0 8px; font-size:14px;">Heroes</h3>
+        <div class="list" id="heroes"></div>
+      </div>
+
+      <div class="item">
+        <h3 style="margin:0 0 8px; font-size:14px;">Settings</h3>
+        <div class="row">
+          <button class="btn" id="saveBtn">Save</button>
+          <button class="btn" id="loadBtn">Load</button>
+          <button class="btn" id="resetBtn">Hard Reset</button>
+        </div>
+        <div class="tiny muted">Autosaves every 15 seconds.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Helpers ----------
+  const el = (id) => document.getElementById(id);
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const fmt = (n) => {
+    if (!isFinite(n)) return "∞";
+    const abs = Math.abs(n);
+    if (abs < 1e6) return n.toFixed(2).replace(/\.?0+$/, '').replace(/,/g, ',');
+    const units = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"];
+    let u = 0;
+    let v = n;
+    while (Math.abs(v) >= 1000 && u < units.length - 1) { v /= 1000; u++; }
+    return `${v.toFixed(2)}${units[u]}`;
+  };
+  const now = () => Date.now();
+
+  // ---------- Game State ----------
+  const defaultState = () => ({
+    gold: 0,
+    stage: 1,
+    substage: 1,         // 1..10 per stage
+    shards: 0,
+    tapLevel: 1,
+    tapBase: 1,
+    critChance: 0.10,
+    critMult: 5,
+    skillActiveUntil: 0,
+    skillCooldownUntil: 0,
+    bossEntered: false,  // true if player has entered the boss fight
+    bossAttemptedThisStage: false,  // tracks if boss has been attempted in current stage
+    heroes: [
+      { id:"squire", name:"Squire", level: 0, baseDps: 1, dpsMultPerLevel: 1.12, unlockStage: 2 },
+      { id:"archer", name:"Archer", level: 0, baseDps: 6, dpsMultPerLevel: 1.13, unlockStage: 8 },
+      { id:"mage",   name:"Mage",   level: 0, baseDps: 30, dpsMultPerLevel: 1.14, unlockStage: 18 },
+    ],
+    upgrades: {
+      tap: 1,
+      gold: 1,
+      idle: 1,
+    },
+    lifetimeGold: 0,
+    lastTick: now(),
+    lastSave: now(),
+  });
+
+  let S = defaultState();
+
+  // ---------- Balance ----------
+  const SUBSTAGES_PER_STAGE = 10;
+  const BOSS_EVERY_STAGE = 1; // boss at the end of every stage
+  const BOSS_TIME_LIMIT_MS = 20000;
+
+  function globalMult() {
+    // Permanent shard power: simple and satisfying
+    return 1 + S.shards * 0.08; // 8% per shard
+  }
+
+  function tapDamage() {
+    const tapUpgrade = S.upgrades.tap;
+    const skillMult = (now() < S.skillActiveUntil) ? 2.5 : 1.0;
+    return S.tapBase * Math.pow(1.15, S.tapLevel - 1) * tapUpgrade * globalMult() * skillMult;
+  }
+
+  function heroDps() {
+    const idleUpgrade = S.upgrades.idle;
+    let dps = 0;
+    for (const h of S.heroes) {
+      if (h.level <= 0) continue;
+      dps += h.baseDps * Math.pow(h.dpsMultPerLevel, h.level - 1);
+    }
+    const skillMult = (now() < S.skillActiveUntil) ? 2.0 : 1.0;
+    return dps * idleUpgrade * globalMult() * skillMult;
+  }
+
+  function enemyMaxHp(stage, substage, isBoss) {
+    // Smooth exponential-ish curve
+    const base = 10 * Math.pow(1.35, stage - 1) * Math.pow(1.07, substage - 1);
+    return isBoss ? base * 14 : base;
+  }
+
+  function enemyReward(stage, substage, isBoss) {
+    const base = 2 * Math.pow(1.28, stage - 1) * Math.pow(1.04, substage - 1);
+    const goldUpgrade = S.upgrades.gold;
+    return Math.max(1, Math.floor(base * goldUpgrade * (isBoss ? 8 : 1)));
+  }
+
+  function prestigeEarned() {
+    // Reward based on stage reached (roughly)
+    const reached = (S.stage - 1) * SUBSTAGES_PER_STAGE + (S.substage - 1);
+    // Quadratic-ish curve that feels good
+    return Math.max(0, Math.floor(Math.pow(reached / 40, 1.35)));
+  }
+
+  // ---------- Enemy ----------
+  let enemy = {
+    isBoss: false,
+    name: "Wisp",
+    hp: 10,
+    hpMax: 10,
+    reward: 2,
+    bossStartAt: 0,
+  };
+
+  function enemyNameFor(stage, isBoss) {
+    const names = ["Wisp","Crawler","Shade","Brute","Warden","Spectre","Golem","Harbinger","Titanling","Abyss Knight"];
+    const n = names[(stage - 1) % names.length];
+    return isBoss ? `Boss ${n}` : n;
+  }
+
+  function spawnEnemy() {
+    const isBossStage = (S.substage === SUBSTAGES_PER_STAGE) && (S.stage % BOSS_EVERY_STAGE === 0);
+    const actuallySpawnBoss = isBossStage && S.bossEntered;
+    const hpMax = Math.floor(enemyMaxHp(S.stage, S.substage, actuallySpawnBoss));
+    enemy.isBoss = actuallySpawnBoss;
+    enemy.hpMax = hpMax;
+    enemy.hp = hpMax;
+    enemy.reward = enemyReward(S.stage, S.substage, actuallySpawnBoss);
+    enemy.name = enemyNameFor(S.stage, actuallySpawnBoss);
+    enemy.bossStartAt = actuallySpawnBoss ? now() : 0;
+    if (actuallySpawnBoss) {
+      log(`Boss appears at Stage ${S.stage}!`);
+    } else if (isBossStage && !S.bossEntered) {
+      log(`Stage ${S.stage}-${S.substage} (Boss preparing...)`);
+    } else {
+      log(`Stage ${S.stage}-${S.substage}`);
+    }
+  }
+
+  function advanceStage() {
+    S.substage++;
+    if (S.substage > SUBSTAGES_PER_STAGE) {
+      S.substage = 1;
+      S.stage++;
+      S.bossEntered = false;  // reset boss state for new stage
+      S.bossAttemptedThisStage = false;  // reset for new stage
+    }
+    // Automatically enter boss fight when reaching round 10 of a new stage (only if not already attempted)
+    const isBossStage = (S.substage === SUBSTAGES_PER_STAGE) && (S.stage % BOSS_EVERY_STAGE === 0);
+    if (isBossStage && !S.bossAttemptedThisStage) {
+      S.bossEntered = true;
+      S.bossAttemptedThisStage = true;
+    }
+    spawnEnemy();
+  }
+
+  // ---------- Logging ----------
+  function log(msg) {
+    const box = el("log");
+    const t = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    box.textContent = `[${t}] ${msg}\n` + box.textContent;
+  }
+
+  // ---------- Combat ----------
+  function dealDamage(amount, sourceLabel) {
+    if (enemy.hp <= 0) return;
+
+    // Boss time limit: if failed, knock back a substage
+    if (enemy.isBoss) {
+      const elapsed = now() - enemy.bossStartAt;
+      if (elapsed > BOSS_TIME_LIMIT_MS) {
+        log("Boss escaped! You’re pushed back a little.");
+        // Small penalty
+        if (S.substage > 1) S.substage--;
+        S.bossEntered = false;
+        spawnEnemy();
+        return;
+      }
+    }
+
+    enemy.hp = Math.max(0, enemy.hp - amount);
+    if (enemy.hp === 0) {
+      const g = enemy.reward;
+      S.gold += g;
+      S.lifetimeGold += g;
+      log(`${sourceLabel} defeated ${enemy.name} (+${g} gold)`);
+      
+      // Only respawn if at round 9 of a boss stage (waiting for boss fight entry)
+      const isBossStage = (S.substage === SUBSTAGES_PER_STAGE) && (S.stage % BOSS_EVERY_STAGE === 0);
+      const isRound9OfBossStage = (S.substage === 9) && (S.stage % BOSS_EVERY_STAGE === 0);
+      
+      if (isRound9OfBossStage && !enemy.isBoss) {
+        // At round 9 of a boss stage; respawn to wait for boss entry
+        spawnEnemy();
+      } else {
+        // Otherwise, advance normally
+        advanceStage();
+      }
+    }
+  }
+
+  function tap() {
+    let dmg = tapDamage();
+    const isCrit = Math.random() < S.critChance;
+    if (isCrit) dmg *= S.critMult;
+    dealDamage(dmg, isCrit ? "CRIT tap" : "Tap");
+  }
+
+  // ---------- UI Lists ----------
+  function upgradeCost(which) {
+    const level = S.upgrades[which];
+    const base = { tap: 30, gold: 60, idle: 90 }[which];
+    return Math.floor(base * Math.pow(1.55, level - 1));
+  }
+
+  function heroCost(hero) {
+    // Cost rises quickly; tuned for MVP feel
+    const base = { squire: 50, archer: 400, mage: 2500 }[hero.id] ?? 100;
+    return Math.floor(base * Math.pow(1.45, hero.level));
+  }
+
+  function buildLists() {
+    const up = el("upgrades");
+    up.innerHTML = "";
+
+    const upgrades = [
+      {
+        key:"tap",
+        title:"Tap Training",
+        desc:"Increases tap damage multiplier.",
+        effect: () => `Current: ${S.upgrades.tap.toFixed(2)}×`,
+      },
+      {
+        key:"idle",
+        title:"Hero Discipline",
+        desc:"Increases hero DPS multiplier.",
+        effect: () => `Current: ${S.upgrades.idle.toFixed(2)}×`,
+      },
+      {
+        key:"gold",
+        title:"Gold Magnet",
+        desc:"Increases gold earned from kills.",
+        effect: () => `Current: ${S.upgrades.gold.toFixed(2)}×`,
+      },
+    ];
+
+    for (const u of upgrades) {
+      const cost = upgradeCost(u.key);
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="split">
+          <div>
+            <h3>${u.title}</h3>
+            <p>${u.desc} <span class="muted">${u.effect()}</span></p>
+          </div>
+          <button class="btn" ${S.gold < cost ? "disabled" : ""} data-up="${u.key}">
+            Buy (${fmt(cost)})
+          </button>
+        </div>
+      `;
+      up.appendChild(div);
+    }
+
+    const heroesBox = el("heroes");
+    heroesBox.innerHTML = "";
+
+    for (const h of S.heroes) {
+      const unlocked = S.stage >= h.unlockStage || (S.stage === h.unlockStage && S.substage >= 1);
+      const cost = heroCost(h);
+      const currentDps = h.level > 0
+        ? h.baseDps * Math.pow(h.dpsMultPerLevel, h.level - 1) * S.upgrades.idle * globalMult() * ((now() < S.skillActiveUntil) ? 2.0 : 1.0)
+        : 0;
+
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="split">
+          <div>
+            <h3>${h.name} <span class="muted">Lv ${h.level}</span></h3>
+            <p>${unlocked ? `Adds idle DPS. Current contribution: <b>${fmt(currentDps)}</b>/s` : `Unlocks at Stage ${h.unlockStage}.`}</p>
+          </div>
+          <button class="btn" ${(!unlocked || S.gold < cost) ? "disabled" : ""} data-hero="${h.id}">
+            Upgrade (${fmt(cost)})
+          </button>
+        </div>
+      `;
+      heroesBox.appendChild(div);
+    }
+  }
+
+  // ---------- UI Update ----------
+  function refreshUI() {
+    el("gold").textContent = fmt(S.gold);
+    el("stage").textContent = S.stage.toString();
+    el("substage").textContent = S.substage.toString();
+    el("shards").textContent = fmt(S.shards);
+
+    el("tapDmg").textContent = fmt(tapDamage());
+    el("heroDps").textContent = fmt(heroDps());
+    el("crit").textContent = `${Math.round(S.critChance * 100)}%`;
+    el("critMult").textContent = `${S.critMult}`;
+    el("globalMult").textContent = `${globalMult().toFixed(2)}×`;
+
+    el("enemyName").textContent = enemy.name;
+    el("hp").textContent = Math.floor(enemy.hp).toLocaleString("en-GB");
+    el("hpMax").textContent = Math.floor(enemy.hpMax).toLocaleString("en-GB");
+    el("reward").textContent = fmt(enemy.reward);
+
+    const bar = el("hpBar");
+    bar.style.width = `${(clamp01(enemy.hp / enemy.hpMax) * 100).toFixed(2)}%`;
+
+    el("bossTag").style.display = enemy.isBoss ? "inline-block" : "none";
+
+    // Boss timer bar
+    if (enemy.isBoss) {
+      const elapsed = now() - enemy.bossStartAt;
+      const remaining = Math.max(0, BOSS_TIME_LIMIT_MS - elapsed);
+      const timerPercent = (remaining / BOSS_TIME_LIMIT_MS) * 100;
+      el("bossTimerRow").style.display = "block";
+      el("bossTimerBar").style.width = `${timerPercent.toFixed(2)}%`;
+    } else {
+      el("bossTimerRow").style.display = "none";
+    }
+
+    // Boss enter/exit buttons
+    const isBossStage = (S.stage % BOSS_EVERY_STAGE === 0);
+    const isRound9OfBossStage = (S.substage === 9) && isBossStage;
+    const isRound10OfBossStage = (S.substage === SUBSTAGES_PER_STAGE) && isBossStage;
+    el("bossRow").style.display = (isRound9OfBossStage && !S.bossEntered) ? "flex" : "none";
+    el("exitBossRow").style.display = (isRound10OfBossStage && S.bossEntered) ? "flex" : "none";
+
+    // Skill
+    const t = now();
+    const onCd = t < S.skillCooldownUntil;
+    const active = t < S.skillActiveUntil;
+    el("skillBtn").disabled = onCd && !active;
+    el("skillBtn").textContent = active ? "Power Surge (active)" : "Power Surge (+10s)";
+    if (active) {
+      el("skillInfo").textContent = `Active for ${(Math.max(0, S.skillActiveUntil - t)/1000).toFixed(0)}s`;
+    } else if (onCd) {
+      el("skillInfo").textContent = `Cooldown: ${(Math.max(0, S.skillCooldownUntil - t)/1000).toFixed(0)}s`;
+    } else {
+      el("skillInfo").textContent = "Cooldown: 30s";
+    }
+
+    // Prestige
+    const earn = prestigeEarned();
+    el("prestigeEarn").textContent = fmt(earn);
+    el("prestigeBtn").disabled = earn <= 0;
+
+    buildLists();
+  }
+
+  // ---------- Click handlers ----------
+  el("tapBtn").addEventListener("click", tap);
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const upKey = btn.getAttribute("data-up");
+    if (upKey) {
+      const cost = upgradeCost(upKey);
+      if (S.gold >= cost) {
+        S.gold -= cost;
+        // Upgrade increments: multiplicative feel
+        const bump = { tap: 0.25, gold: 0.20, idle: 0.22 }[upKey] ?? 0.2;
+        S.upgrades[upKey] = +(S.upgrades[upKey] + bump).toFixed(2);
+        log(`Bought upgrade: ${upKey} (+${bump.toFixed(2)})`);
+        refreshUI();
+      }
+    }
+
+    const heroId = btn.getAttribute("data-hero");
+    if (heroId) {
+      const h = S.heroes.find(x => x.id === heroId);
+      if (!h) return;
+      const unlocked = S.stage >= h.unlockStage;
+      if (!unlocked) return;
+      const cost = heroCost(h);
+      if (S.gold >= cost) {
+        S.gold -= cost;
+        h.level++;
+        log(`Upgraded ${h.name} to Lv ${h.level}`);
+        refreshUI();
+      }
+    }
+  });
+
+  el("skillBtn").addEventListener("click", () => {
+    const t = now();
+    if (t < S.skillCooldownUntil && t >= S.skillActiveUntil) return;
+    if (t < S.skillActiveUntil) return;
+    S.skillActiveUntil = t + 10000;
+    S.skillCooldownUntil = t + 30000;
+    log("Power Surge activated!");
+    refreshUI();
+  });
+
+  el("enterBossBtn").addEventListener("click", () => {
+    S.substage = 10;  // Move to round 10 (boss round)
+    S.bossEntered = true;
+    S.bossAttemptedThisStage = true;
+    log("Entering boss fight...");
+    spawnEnemy();
+    refreshUI();
+  });
+
+  el("exitBossBtn").addEventListener("click", () => {
+    S.bossEntered = false;
+    S.substage = 9;
+    log("Exited boss fight. Returned to minor enemy.");
+    spawnEnemy();
+    refreshUI();
+  });
+
+  el("prestigeBtn").addEventListener("click", () => {
+    const earned = prestigeEarned();
+    if (earned <= 0) return;
+    S.shards += earned;
+
+    // Soft reset (keep shards + a few basics)
+    const keepShards = S.shards;
+    S = defaultState();
+    S.shards = keepShards;
+
+    log(`Ascended and gained ${earned} shards. Permanent power increased.`);
+    spawnEnemy();
+    refreshUI();
+    save();
+  });
+
+  // ---------- Game tick ----------
+  function tick() {
+    const t = now();
+    const dt = Math.min(0.25, (t - S.lastTick) / 1000); // cap dt for stability
+    S.lastTick = t;
+
+    // Idle DPS
+    const dps = heroDps();
+    if (dps > 0) dealDamage(dps * dt, "Heroes");
+
+    // Autosave
+    if (t - S.lastSave > 15000) {
+      save();
+      S.lastSave = t;
+    }
+
+    refreshUI();
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Save / Load ----------
+  const KEY = "idle_ascension_mvp_v1";
+
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ ...S, savedAt: now() }));
+      log("Game saved.");
+    } catch {}
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+
+      // Merge carefully
+      const fresh = defaultState();
+      S = { ...fresh, ...data };
+      // Ensure heroes exist and merge their levels (in case of updates)
+      if (Array.isArray(data.heroes) && data.heroes.length > 0) {
+        for (let i = 0; i < S.heroes.length; i++) {
+          const savedHero = data.heroes.find(h => h.id === S.heroes[i].id);
+          if (savedHero) {
+            S.heroes[i].level = savedHero.level;
+          }
+        }
+      }
+
+      // Offline progress (basic): simulate hero DPS for up to 8 hours
+      const savedAt = data.savedAt ?? now();
+      const offlineMs = Math.max(0, now() - savedAt);
+      const offlineCapMs = 8 * 60 * 60 * 1000;
+      const simMs = Math.min(offlineMs, offlineCapMs);
+      const simSeconds = simMs / 1000;
+
+      // Simulate by granting gold proportional to kills approximation:
+      // We’ll simulate damage only, so it still respects stage gates/bosses loosely.
+      // For MVP, keep it simple: add gold based on DPS and stage reward.
+      const approxGold = Math.floor((heroDps() * simSeconds / Math.max(1, enemyMaxHp(S.stage, S.substage, false))) * enemyReward(S.stage, S.substage, false));
+      if (approxGold > 0) {
+        S.gold += approxGold;
+        S.lifetimeGold += approxGold;
+        log(`Offline progress: +${fmt(approxGold)} gold (simulated ${Math.floor(simSeconds/60)} min).`);
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  el("saveBtn").addEventListener("click", save);
+  el("loadBtn").addEventListener("click", () => { if (load()) { log("Loaded save."); spawnEnemy(); refreshUI(); }});
+  el("resetBtn").addEventListener("click", () => {
+    localStorage.removeItem(KEY);
+    S = defaultState();
+    log("Hard reset complete.");
+    spawnEnemy();
+    refreshUI();
+  });
+
+  // ---------- Init ----------
+  const loaded = load();
+  spawnEnemy();
+  refreshUI();
+  if (loaded) log("Welcome back.");
+  tick();
+})();
+</script>
+</body>
+</html>

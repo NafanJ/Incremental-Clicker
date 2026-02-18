@@ -1,0 +1,28 @@
+:root { --bg:#0b0f1a; --card:#121a2b; --ink:#e8eefc; --muted:#9fb0d0; --line:#22304f; }
+body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--ink); }
+.wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+h1 { margin: 0 0 12px; font-size: 22px; font-weight: 800; letter-spacing: .2px; }
+.grid { display:grid; grid-template-columns: 1.1fr .9fr; gap: 12px; }
+@media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.row { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.stat { color:var(--muted); font-size: 12px; }
+.big { font-size: 30px; font-weight: 900; letter-spacing: .3px; }
+.btn { cursor:pointer; border:1px solid var(--line); background:#0f1730; color:var(--ink); padding:10px 12px; border-radius:12px; font-weight:700; }
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: #17346a; border-color:#2a4d92; }
+.btn.danger { background: #5b1b1b; border-color:#7a2a2a; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.stack { display:flex; flex-direction:column; gap:10px; }
+.progress { height:12px; background:#0a1023; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
+.bar { height:100%; width:0%; background: linear-gradient(90deg, #2a66ff, #68d0ff); }
+.muted { color:var(--muted); }
+.list { display:flex; flex-direction:column; gap: 10px; }
+.item { border:1px solid var(--line); border-radius:12px; padding:10px; background:#0e152c; }
+.item h3 { margin:0 0 4px; font-size: 14px; }
+.item p { margin:0; font-size: 12px; color: var(--muted); }
+.split { display:grid; grid-template-columns: 1fr auto; gap: 8px; align-items:center; }
+.pill { font-size: 11px; padding: 4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+.log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b8c7ea; line-height: 1.4; max-height: 170px; overflow:auto; border-radius: 12px; padding: 10px; border:1px solid var(--line); background:#07102a; }
+.tiny { font-size: 11px; color: var(--muted); }
