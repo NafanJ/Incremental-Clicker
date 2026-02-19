@@ -16,6 +16,7 @@ export const now = () => Date.now();
 export const SUBSTAGES_PER_STAGE = 10;
 export const BOSS_EVERY_STAGE = 1; // boss at the end of every stage
 export const BOSS_TIME_LIMIT_MS = 20000;
+export const TAP_TRAINING_BONUS_PER_SESSION = 0.5;
 
 export function globalMult(shards) {
   // Permanent shard power: simple and satisfying
@@ -35,11 +36,12 @@ export function effectiveCritMult(state) {
 }
 
 export function tapDamage(tapLevel, tapBase, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}) {
-  const tapUpgrade = upgrades.tap;
+  const effectiveTapBase = tapBase + (upgrades.tap ?? 0) * TAP_TRAINING_BONUS_PER_SESSION;
   const skillMult = (now() < skillActiveUntil) ? 2.5 : 1.0;
   const sharpening = milestones.sharpening ? 1.25 : 1;
   const tapSynergy = 1 + (shardUpgrades.tapSynergy ?? 0) * 0.15;
-  return tapBase * Math.pow(1.15, tapLevel - 1) * tapUpgrade * globalMult(shards) * skillMult * sharpening * tapSynergy;
+  const tapMastery = 1 + (shardUpgrades.tapMastery ?? 0) * 0.20;
+  return effectiveTapBase * Math.pow(1.15, tapLevel - 1) * globalMult(shards) * skillMult * sharpening * tapSynergy * tapMastery;
 }
 
 export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}) {
@@ -91,6 +93,11 @@ export function upgradeCost(which, upgrades) {
   return Math.floor(base * Math.pow(1.55, level - 1));
 }
 
+export function tapTrainingCost(level) {
+  // Integer session level (0, 1, 2...). Scales at same rate as old system (1.55^0.25 ≈ +12% per purchase).
+  return Math.floor(20 * Math.pow(1.55, level * 0.25));
+}
+
 export function heroCost(hero) {
   // Cost rises quickly; tuned for MVP feel
   const base = { squire: 50, archer: 400, mage: 2500, paladin: 15000, necromancer: 80000 }[hero.id] ?? 100;
@@ -108,6 +115,7 @@ export const SHARD_UPGRADES = [
   { key: 'killingBlow',   name: 'Killing Blow',      desc: '+1× crit multiplier per level',          shardBase: 4, costMult: 3.5 },
   { key: 'bossBane',      name: 'Boss Bane',         desc: '+20% boss gold reward per level',        shardBase: 4, costMult: 3.5 },
   { key: 'soulCollector', name: 'Soul Collector',    desc: '+0.5 bonus shards per ascension/level',  shardBase: 6, costMult: 4   },
+  { key: 'tapMastery',   name: 'Focused Strike',    desc: '+20% tap damage per level',               shardBase: 4, costMult: 3.5 },
 ];
 
 export function shardUpgradeCost(key, level) {
