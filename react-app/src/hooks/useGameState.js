@@ -1,12 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { defaultState } from '../utils/gameState.js';
 import { load, save } from '../utils/storage.js';
-import { now, SUBSTAGES_PER_STAGE, BOSS_EVERY_STAGE, BOSS_TIME_LIMIT_MS, tapDamage, heroDps, enemyMaxHp, enemyReward, enemyNameFor, globalMult, effectiveCritChance, effectiveCritMult, shardUpgradeCost, MILESTONES } from '../utils/gameLogic.js';
+import { now, SUBSTAGES_PER_STAGE, BOSS_EVERY_STAGE, BOSS_TIME_LIMIT_MS, tapDamage, heroDps, enemyMaxHp, enemyReward, enemyNameFor, globalMult, effectiveCritChance, effectiveCritMult, shardUpgradeCost, shardUpgradeUnlockCost, SHARD_UPGRADES, MILESTONES } from '../utils/gameLogic.js';
 
 export function useGameState() {
   const [state, _setStateRaw] = useState(() => {
     const loaded = load();
-    return loaded || defaultState();
+    const base = loaded || defaultState();
+    // Migration: auto-unlock upgrades that were already purchased before unlock system
+    if (base.shardUpgrades && !base.shardUpgradeUnlocked) {
+      base.shardUpgradeUnlocked = {};
+    }
+    const unlocked = { ...base.shardUpgradeUnlocked };
+    for (const u of SHARD_UPGRADES) {
+      if ((base.shardUpgrades[u.key] ?? 0) > 0 && !unlocked[u.key]) {
+        unlocked[u.key] = true;
+      }
+    }
+    return { ...base, shardUpgradeUnlocked: unlocked };
   });
   // Ref mirrors game state so the tick can read values synchronously without async updaters
   const stateRef = useRef(state);
@@ -134,7 +145,7 @@ export function useGameState() {
 
   // Tap
   const tap = useCallback(() => {
-    const dmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones);
+    const dmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, state.shardUpgrades);
     const isCrit = Math.random() < effectiveCritChance(state);
     const finalDmg = isCrit ? dmg * effectiveCritMult(state) : dmg;
     dealDamage(finalDmg, isCrit ? "CRIT tap" : "Tap");
@@ -147,7 +158,7 @@ export function useGameState() {
       const t = now();
       const s = stateRef.current;
       const dt = Math.min(0.25, (t - s.lastTick) / 1000);
-      const dps = heroDps(s.heroes, s.upgrades, s.shards, s.skillActiveUntil, s.milestones);
+      const dps = heroDps(s.heroes, s.upgrades, s.shards, s.skillActiveUntil, s.milestones, s.shardUpgrades);
 
       if (t - s.lastSave > 15000) {
         save(s);
@@ -166,8 +177,24 @@ export function useGameState() {
     return () => cancelAnimationFrame(rafId);
   }, [dealDamage, addLog]);
 
-  // Buy shard upgrade
+  // Unlock a shard upgrade (first spend before leveling)
+  const unlockShardUpgrade = useCallback((key) => {
+    if (state.shardUpgradeUnlocked?.[key]) return;
+    const alreadyUnlocked = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
+    const cost = shardUpgradeUnlockCost(alreadyUnlocked);
+    if (state.shards < cost) return;
+    const u = SHARD_UPGRADES.find(u => u.key === key);
+    setState(prev => ({
+      ...prev,
+      shards: prev.shards - cost,
+      shardUpgradeUnlocked: { ...prev.shardUpgradeUnlocked, [key]: true },
+    }));
+    addLog(`Unlocked ascension upgrade: ${u?.name ?? key}`);
+  }, [state, setState, addLog]);
+
+  // Buy shard upgrade (level up an already-unlocked upgrade)
   const buyShardUpgrade = useCallback((key) => {
+    if (!state.shardUpgradeUnlocked?.[key]) return;
     const cost = shardUpgradeCost(key, state.shardUpgrades[key]);
     if (state.shards < cost) return;
     setState(prev => ({
@@ -175,7 +202,7 @@ export function useGameState() {
       shards: prev.shards - cost,
       shardUpgrades: { ...prev.shardUpgrades, [key]: prev.shardUpgrades[key] + 1 },
     }));
-    addLog(`Bought shard upgrade: ${key}`);
+    addLog(`Leveled up shard upgrade: ${key}`);
   }, [state, setState, addLog]);
 
   // Buy milestone
@@ -199,5 +226,5 @@ export function useGameState() {
     }
   }, []); // run once
 
-  return { state, setState, enemy, log, tap, addLog, spawnEnemy, advanceStage, dealDamage, buyShardUpgrade, buyMilestone };
+  return { state, setState, enemy, log, tap, addLog, spawnEnemy, advanceStage, dealDamage, unlockShardUpgrade, buyShardUpgrade, buyMilestone };
 }

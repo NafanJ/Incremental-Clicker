@@ -3,7 +3,7 @@ import UpgradeSection from './components/UpgradeSection.jsx';
 import { useGameState } from './hooks/useGameState.js';
 
 function App() {
-  const { state, setState, enemy, log, tap, addLog, spawnEnemy, buyShardUpgrade, buyMilestone } = useGameState();
+  const { state, setState, enemy, log, tap, addLog, spawnEnemy, unlockShardUpgrade, buyShardUpgrade, buyMilestone } = useGameState();
 
   return (
     <div className="wrap">
@@ -25,6 +25,7 @@ function App() {
           setState={setState}
           addLog={addLog}
           spawnEnemy={spawnEnemy}
+          unlockShardUpgrade={unlockShardUpgrade}
           buyShardUpgrade={buyShardUpgrade}
           buyMilestone={buyMilestone}
         />

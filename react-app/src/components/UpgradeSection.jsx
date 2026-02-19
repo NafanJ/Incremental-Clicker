@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { upgradeCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, MILESTONES } from '../utils/gameLogic.js';
+import { upgradeCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES } from '../utils/gameLogic.js';
 import SettingsSection from './SettingsSection.jsx';
 
-function UpgradeSection({ state, setState, addLog, spawnEnemy, buyShardUpgrade, buyMilestone }) {
+function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrade, buyShardUpgrade, buyMilestone }) {
   const [tab, setTab] = useState('upgrades');
 
   const handleUpgrade = (key) => {
@@ -144,29 +144,49 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, buyShardUpgrade, 
 
       {tab === 'ascension' && (
         <div className="item">
-          <p className="tiny muted" style={{ marginBottom: '8px' }}>Spend ascension shards on permanent bonuses that survive prestige.</p>
+          <p className="tiny muted" style={{ marginBottom: '8px' }}>Spend ascension shards on permanent bonuses that survive prestige. Unlock new upgrades first, then level them up.</p>
           <div className="list">
-            {SHARD_UPGRADES.map(u => {
-              const level = state.shardUpgrades[u.key];
-              const cost = shardUpgradeCost(u.key, level);
-              return (
-                <div key={u.key} className="item">
-                  <div className="split">
-                    <div>
-                      <h3>{u.name} <span className="muted">Lv {level}</span></h3>
-                      <p>{u.desc}</p>
+            {(() => {
+              const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
+              const nextUnlockCost = shardUpgradeUnlockCost(unlockedCount);
+              return SHARD_UPGRADES.map(u => {
+                const isUnlocked = !!(state.shardUpgradeUnlocked?.[u.key]);
+                const level = state.shardUpgrades[u.key] ?? 0;
+                const levelCost = shardUpgradeCost(u.key, level);
+                return (
+                  <div key={u.key} className="item" style={{ opacity: isUnlocked ? 1 : 0.65 }}>
+                    <div className="split">
+                      <div>
+                        <h3>
+                          {isUnlocked ? null : <span style={{ marginRight: '6px' }}>🔒</span>}
+                          {u.name}
+                          {isUnlocked && <span className="muted"> Lv {level}</span>}
+                        </h3>
+                        <p>{u.desc}</p>
+                      </div>
+                      {isUnlocked ? (
+                        <button
+                          className="btn"
+                          disabled={state.shards < levelCost}
+                          onClick={() => buyShardUpgrade(u.key)}
+                        >
+                          {levelCost} ◆
+                        </button>
+                      ) : (
+                        <button
+                          className="btn"
+                          disabled={state.shards < nextUnlockCost}
+                          onClick={() => unlockShardUpgrade(u.key)}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          Unlock {nextUnlockCost} ◆
+                        </button>
+                      )}
                     </div>
-                    <button
-                      className="btn"
-                      disabled={state.shards < cost}
-                      onClick={() => buyShardUpgrade(u.key)}
-                    >
-                      {cost} ◆
-                    </button>
                   </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       )}
