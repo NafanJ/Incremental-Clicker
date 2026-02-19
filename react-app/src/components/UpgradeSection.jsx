@@ -85,7 +85,7 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
         <div className="item">
           <div className="list">
             {upgradeList.map(u => {
-              const cost = upgradeCost(u.key, state.upgrades);
+              const cost = u.key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(u.key, state.upgrades);
               return (
                 <div key={u.key} className="item">
                   <div className="split">
