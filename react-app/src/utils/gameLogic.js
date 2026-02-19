@@ -27,12 +27,14 @@ export function effectiveCritChance(state) {
   const fromUpgrade = (state.upgrades.critC - 1) * 0.02;
   const fromMilestone = state.milestones?.dragonsLuck ? 0.05 : 0;
   const fromShard = (state.shardUpgrades?.luckyStrike ?? 0) * 0.03;
-  return state.critChance + fromUpgrade + fromMilestone + fromShard;
+  const fromBloodFrenzy = (now() < (state.bloodFrenzyActiveUntil ?? 0)) ? 0.30 : 0;
+  return state.critChance + fromUpgrade + fromMilestone + fromShard + fromBloodFrenzy;
 }
 
 export function effectiveCritMult(state) {
   const fromShard = (state.shardUpgrades?.killingBlow ?? 0) * 1.0;
-  return state.critMult + (state.upgrades.critM - 1) * 0.5 + fromShard;
+  const bloodFrenzyMult = (now() < (state.bloodFrenzyActiveUntil ?? 0)) ? 2.0 : 1.0;
+  return (state.critMult + (state.upgrades.critM - 1) * 0.5 + fromShard) * bloodFrenzyMult;
 }
 
 export function tapDamage(tapLevel, tapBase, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}) {
@@ -115,7 +117,10 @@ export const SHARD_UPGRADES = [
   { key: 'killingBlow',   name: 'Killing Blow',      desc: '+1× crit multiplier per level',          shardBase: 4, costMult: 3.5 },
   { key: 'bossBane',      name: 'Boss Bane',         desc: '+20% boss gold reward per level',        shardBase: 4, costMult: 3.5 },
   { key: 'soulCollector', name: 'Soul Collector',    desc: '+0.5 bonus shards per ascension/level',  shardBase: 6, costMult: 4   },
-  { key: 'tapMastery',   name: 'Focused Strike',    desc: '+20% tap damage per level',               shardBase: 4, costMult: 3.5 },
+  { key: 'tapMastery',          name: 'Focused Strike',    desc: '+20% tap damage per level',              shardBase: 4, costMult: 3.5 },
+  { key: 'powerSurgeDuration', name: 'Surge Duration',    desc: '+1s to Power Surge per level (max 30s)', shardBase: 2, costMult: 2,   isDurationUpgrade: true },
+  { key: 'goldRushDuration',   name: 'Rush Duration',     desc: '+1s to Gold Rush per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
+  { key: 'bloodFrenzyDuration',name: 'Frenzy Duration',   desc: '+1s to Blood Frenzy per level (max 30s)',shardBase: 2, costMult: 2,   isDurationUpgrade: true },
 ];
 
 export function shardUpgradeCost(key, level) {
@@ -125,6 +130,45 @@ export function shardUpgradeCost(key, level) {
 
 export function shardUpgradeUnlockCost(unlockedCount) {
   return Math.ceil(2 * Math.pow(2, unlockedCount));
+}
+
+// ---------- Skills ----------
+export const SKILLS = [
+  {
+    key: 'powerSurge',
+    name: 'Power Surge',
+    desc: '2.5× tap damage and 2× hero DPS',
+    activeUntilKey: 'skillActiveUntil',
+    cooldownUntilKey: 'skillCooldownUntil',
+    baseDuration: 10,   // seconds
+    cooldown: 30000,    // ms
+    durationUpgradeKey: 'powerSurgeDuration',
+  },
+  {
+    key: 'goldRush',
+    name: 'Gold Rush',
+    desc: '3× gold earned from all enemies',
+    activeUntilKey: 'goldRushActiveUntil',
+    cooldownUntilKey: 'goldRushCooldownUntil',
+    baseDuration: 10,
+    cooldown: 45000,
+    durationUpgradeKey: 'goldRushDuration',
+  },
+  {
+    key: 'bloodFrenzy',
+    name: 'Blood Frenzy',
+    desc: '+30% crit chance and 2× crit multiplier',
+    activeUntilKey: 'bloodFrenzyActiveUntil',
+    cooldownUntilKey: 'bloodFrenzyCooldownUntil',
+    baseDuration: 8,
+    cooldown: 40000,
+    durationUpgradeKey: 'bloodFrenzyDuration',
+  },
+];
+
+export function effectiveSkillDuration(skill, shardUpgrades) {
+  const bonus = shardUpgrades?.[skill.durationUpgradeKey] ?? 0;
+  return Math.min(30, skill.baseDuration + bonus) * 1000; // ms, capped at 30s
 }
 
 export const MILESTONES = [
