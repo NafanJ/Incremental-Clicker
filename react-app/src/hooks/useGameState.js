@@ -103,11 +103,14 @@ export function useGameState() {
       const effectiveBossTimeMs = BOSS_TIME_LIMIT_MS + (stateRef.current.shardUpgrades?.bossTime ?? 0) * 5000;
       const elapsed = now() - prevEnemy.bossStartAt;
       if (elapsed > effectiveBossTimeMs) {
-        addLog("Boss escaped! You're pushed back a little.");
-        setState(prev => prev.substage > 1
-          ? { ...prev, substage: prev.substage - 1, bossEntered: false }
-          : prev
-        );
+        const escapeGold = Math.floor(prevEnemy.reward * 0.35);
+        addLog(`Boss escaped! Recovered ${escapeGold} gold from the battle.`);
+        setState(prev => {
+          const next = prev.substage > 1
+            ? { ...prev, substage: prev.substage - 1, bossEntered: false }
+            : { ...prev, bossEntered: false };
+          return { ...next, gold: next.gold + escapeGold, lifetimeGold: next.lifetimeGold + escapeGold };
+        });
         setTimeout(spawnEnemy, 0);
         return;
       }

@@ -7,7 +7,7 @@ export function defaultState() {
     substage: 1,         // 1..10 per stage
     shards: 0,
     tapLevel: 1,
-    tapBase: 1,
+    tapBase: 2,
     critChance: 0.10,
     critMult: 5,
     skillActiveUntil: 0,
@@ -15,7 +15,7 @@ export function defaultState() {
     bossEntered: false,  // true if player has entered the boss fight
     bossAttemptedThisStage: false,  // tracks if boss has been attempted in current stage
     heroes: [
-      { id:"squire",      name:"Squire",      level: 0, baseDps: 1,   dpsMultPerLevel: 1.12, unlockStage: 2  },
+      { id:"squire",      name:"Squire",      level: 0, baseDps: 2,   dpsMultPerLevel: 1.12, unlockStage: 1  },
       { id:"archer",      name:"Archer",      level: 0, baseDps: 6,   dpsMultPerLevel: 1.13, unlockStage: 8  },
       { id:"mage",        name:"Mage",        level: 0, baseDps: 30,  dpsMultPerLevel: 1.14, unlockStage: 18 },
       { id:"paladin",     name:"Paladin",     level: 0, baseDps: 150, dpsMultPerLevel: 1.15, unlockStage: 30 },
