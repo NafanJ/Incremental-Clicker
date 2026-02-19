@@ -52,13 +52,14 @@ export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones =
 }
 
 export function enemyMaxHp(stage, substage, isBoss) {
-  // Smooth exponential-ish curve
-  const base = 10 * Math.pow(1.35, stage - 1) * Math.pow(1.07, substage - 1);
-  return isBoss ? base * 14 : base;
+  const base = 7 * Math.pow(1.32, stage - 1) * Math.pow(1.07, substage - 1);
+  // Graduated boss multiplier: tutorial-friendly early, full threat by stage 6+
+  const bossMult = stage <= 2 ? 8 : stage <= 5 ? 12 : 14;
+  return isBoss ? base * bossMult : base;
 }
 
 export function enemyReward(stage, substage, isBoss, upgrades, shardUpgrades = {}, milestones = {}) {
-  const base = 2 * Math.pow(1.28, stage - 1) * Math.pow(1.04, substage - 1);
+  const base = 3 * Math.pow(1.28, stage - 1) * Math.pow(1.05, substage - 1);
   const goldUpgrade = upgrades.gold;
   const fortuneBonus = 1 + (shardUpgrades.goldBonus ?? 0) * 0.25;
   const goldVein = milestones.goldVein ? 1.30 : 1;
@@ -80,7 +81,7 @@ export function enemyNameFor(stage, isBoss) {
 
 export function upgradeCost(which, upgrades) {
   const level = upgrades[which];
-  const base = { tap: 30, gold: 60, idle: 90, critC: 80, critM: 120 }[which];
+  const base = { tap: 20, gold: 40, idle: 60, critC: 70, critM: 100 }[which];
   return Math.floor(base * Math.pow(1.55, level - 1));
 }
 
@@ -103,8 +104,8 @@ export function shardUpgradeCost(key, level) {
 }
 
 export const MILESTONES = [
-  { key: 'sharpening',  name: 'Sharpening Stone', unlockStage: 5,  goldCost: 500,   desc: '+25% tap damage (permanent)' },
-  { key: 'formation',   name: 'Battle Formation',  unlockStage: 15, goldCost: 2500,  desc: '+20% hero DPS (permanent)'   },
-  { key: 'dragonsLuck', name: "Dragon's Luck",     unlockStage: 25, goldCost: 8000,  desc: '+5% crit chance (permanent)' },
-  { key: 'goldVein',    name: 'Gold Vein',          unlockStage: 40, goldCost: 25000, desc: '+30% gold income (permanent)' },
+  { key: 'sharpening',  name: 'Sharpening Stone', unlockStage: 4,  goldCost: 500,   desc: '+25% tap damage (permanent)' },
+  { key: 'formation',   name: 'Battle Formation',  unlockStage: 12, goldCost: 2500,  desc: '+20% hero DPS (permanent)'   },
+  { key: 'dragonsLuck', name: "Dragon's Luck",     unlockStage: 22, goldCost: 8000,  desc: '+5% crit chance (permanent)' },
+  { key: 'goldVein',    name: 'Gold Vein',          unlockStage: 35, goldCost: 25000, desc: '+30% gold income (permanent)' },
 ];
