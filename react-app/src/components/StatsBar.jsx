@@ -1,8 +1,8 @@
 import { fmt, tapDamage, heroDps, globalMult, effectiveCritChance, effectiveCritMult } from '../utils/gameLogic.js';
 
 function StatsBar({ state }) {
-  const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones);
-  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones);
+  const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, state.shardUpgrades);
+  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, state.shardUpgrades);
   const gMult = globalMult(state.shards);
   const critChance = effectiveCritChance(state);
   const critMult = effectiveCritMult(state);
