@@ -54,7 +54,7 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
       bossEntered: false,
       bossAttemptedThisStage: false,
       heroes: prev.heroes.map(h => ({ ...h, level: 0 })),
-      upgrades: { tap: 1, gold: 1, idle: 1, critC: 1, critM: 1 },
+      upgrades: { tap: 0, gold: 1, idle: 1, critC: 1, critM: 1 },
       lifetimeGold: 0,
       lastTick: now(),
       lastSave: now(),

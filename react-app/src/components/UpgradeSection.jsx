@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { upgradeCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES, tapDamage, heroDps, effectiveCritChance, effectiveCritMult, prestigeEarned } from '../utils/gameLogic.js';
+import { upgradeCost, tapTrainingCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES, tapDamage, heroDps, effectiveCritChance, effectiveCritMult, prestigeEarned } from '../utils/gameLogic.js';
 import SettingsSection from './SettingsSection.jsx';
 
 function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrade, buyShardUpgrade, buyMilestone }) {
   const [tab, setTab] = useState('upgrades');
 
   const handleUpgrade = (key) => {
-    const cost = upgradeCost(key, state.upgrades);
+    const cost = key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(key, state.upgrades);
     if (state.gold < cost) return;
     setState(prev => {
-      const bump = { tap: 0.25, gold: 0.20, idle: 0.22, critC: 1, critM: 1 }[key] ?? 1;
+      const bump = { tap: 1, gold: 0.20, idle: 0.22, critC: 1, critM: 1 }[key] ?? 1;
       const newUpgrades = { ...prev.upgrades, [key]: +(prev.upgrades[key] + bump).toFixed(2) };
       addLog(`Bought upgrade: ${key}`);
       return { ...prev, gold: prev.gold - cost, upgrades: newUpgrades };
@@ -33,8 +33,8 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
     {
       key: "tap",
       title: "Tap Training",
-      desc: "Increases tap damage multiplier.",
-      effect: () => `Current: ${state.upgrades.tap.toFixed(2)}×`,
+      desc: "Each training session increases your flat tap damage base.",
+      effect: () => `Sessions: ${state.upgrades.tap} (tap base: ${(state.tapBase + state.upgrades.tap * 0.5).toFixed(1)})`,
     },
     {
       key: "idle",
@@ -223,7 +223,7 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
           <div className="item">
             <Section title="Offensive">
               <Row label="Tap Damage" value={fmt(tapDmg)}
-                detail={`base × ${state.upgrades.tap.toFixed(2)}× tap-upgrade${su.tapSynergy ? ` × ${(1 + su.tapSynergy * 0.15).toFixed(2)}× synergy` : ''} × ${gMult.toFixed(2)}× global`} />
+                detail={`base ${(state.tapBase + state.upgrades.tap * 0.5).toFixed(1)}${su.tapSynergy ? ` × ${(1 + su.tapSynergy * 0.15).toFixed(2)}× synergy` : ''}${su.tapMastery ? ` × ${(1 + su.tapMastery * 0.20).toFixed(2)}× mastery` : ''} × ${gMult.toFixed(2)}× global`} />
               <Row label="Hero DPS" value={`${fmt(hDps)}/s`}
                 detail={`hero sum × ${state.upgrades.idle.toFixed(2)}× idle-upgrade${su.heroMastery ? ` × ${(1 + su.heroMastery * 0.12).toFixed(2)}× mastery` : ''} × ${gMult.toFixed(2)}× global`} />
               <Row label="Crit Chance" value={`${Math.round(critChance * 100)}%`}

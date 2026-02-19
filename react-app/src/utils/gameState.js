@@ -22,17 +22,18 @@ export function defaultState() {
       { id:"necromancer", name:"Necromancer", level: 0, baseDps: 700, dpsMultPerLevel: 1.16, unlockStage: 55 },
     ],
     upgrades: {
-      tap: 1,
+      tap: 0,
       gold: 1,
       idle: 1,
       critC: 1,
       critM: 1,
     },
-    shardUpgrades: { goldBonus: 0, bossTime: 0, prestigeBonus: 0, headStart: 0, tapSynergy: 0, heroMastery: 0, luckyStrike: 0, killingBlow: 0, bossBane: 0, soulCollector: 0 },
+    shardUpgrades: { goldBonus: 0, bossTime: 0, prestigeBonus: 0, headStart: 0, tapSynergy: 0, heroMastery: 0, luckyStrike: 0, killingBlow: 0, bossBane: 0, soulCollector: 0, tapMastery: 0 },
     shardUpgradeUnlocked: {},
     milestones: { sharpening: false, formation: false, dragonsLuck: false, goldVein: false },
     lifetimeGold: 0,
     lastTick: now(),
     lastSave: now(),
+    saveVersion: 2,
   };
 }

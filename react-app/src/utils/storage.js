@@ -24,6 +24,12 @@ export function load() {
     // Deep-merge nested objects so new keys added to defaultState survive old saves
     merged.upgrades = { ...fresh.upgrades, ...data.upgrades };
     merged.shardUpgrades = { ...fresh.shardUpgrades, ...(data.shardUpgrades ?? {}) };
+    // Migration v1→v2: convert old float multiplier (1.0, 1.25, 1.5…) to integer session count (0, 1, 2…)
+    const saveVersion = data.saveVersion ?? 1;
+    if (saveVersion < 2) {
+      merged.upgrades.tap = Math.round(((merged.upgrades.tap ?? 1) - 1.0) / 0.25);
+    }
+    merged.saveVersion = 2;
     merged.milestones = { ...fresh.milestones, ...(data.milestones ?? {}) };
     // Ensure heroes exist and merge their levels (in case of updates)
     if (Array.isArray(data.heroes) && data.heroes.length > 0) {
