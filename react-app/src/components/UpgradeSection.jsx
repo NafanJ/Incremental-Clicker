@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { upgradeCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES } from '../utils/gameLogic.js';
+import { upgradeCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES, tapDamage, heroDps, effectiveCritChance, effectiveCritMult, prestigeEarned } from '../utils/gameLogic.js';
 import SettingsSection from './SettingsSection.jsx';
 
 function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrade, buyShardUpgrade, buyMilestone }) {
@@ -64,7 +64,7 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
 
   const unlockedMilestones = MILESTONES.filter(m => state.stage >= m.unlockStage);
 
-  const tabs = ['upgrades', 'heroes', 'ascension', 'milestones'];
+  const tabs = ['upgrades', 'heroes', 'ascension', 'stats', 'milestones'];
 
   return (
     <div className="card stack">
@@ -190,6 +190,69 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
           </div>
         </div>
       )}
+
+      {tab === 'stats' && (() => {
+        const su = state.shardUpgrades ?? {};
+        const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
+        const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
+        const critChance = effectiveCritChance(state);
+        const critMult = effectiveCritMult(state);
+        const gMult = globalMult(state.shards);
+        const goldMult = state.upgrades.gold * (1 + (su.goldBonus ?? 0) * 0.25) * (state.milestones?.goldVein ? 1.30 : 1);
+        const bossGoldMult = goldMult * (1 + (su.bossBane ?? 0) * 0.20);
+        const shardPreview = prestigeEarned(state.stage, state.substage, su);
+
+        const Row = ({ label, value, detail }) => (
+          <div className="item" style={{ padding: '6px 0' }}>
+            <div className="split">
+              <span className="muted" style={{ fontSize: '13px' }}>{label}</span>
+              <b style={{ fontSize: '14px' }}>{value}</b>
+            </div>
+            {detail && <p className="tiny muted" style={{ marginTop: '2px' }}>{detail}</p>}
+          </div>
+        );
+
+        const Section = ({ title, children }) => (
+          <div style={{ marginBottom: '12px' }}>
+            <div className="tiny muted" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{title}</div>
+            {children}
+          </div>
+        );
+
+        return (
+          <div className="item">
+            <Section title="Offensive">
+              <Row label="Tap Damage" value={fmt(tapDmg)}
+                detail={`base × ${state.upgrades.tap.toFixed(2)}× tap-upgrade${su.tapSynergy ? ` × ${(1 + su.tapSynergy * 0.15).toFixed(2)}× synergy` : ''} × ${gMult.toFixed(2)}× global`} />
+              <Row label="Hero DPS" value={`${fmt(hDps)}/s`}
+                detail={`hero sum × ${state.upgrades.idle.toFixed(2)}× idle-upgrade${su.heroMastery ? ` × ${(1 + su.heroMastery * 0.12).toFixed(2)}× mastery` : ''} × ${gMult.toFixed(2)}× global`} />
+              <Row label="Crit Chance" value={`${Math.round(critChance * 100)}%`}
+                detail={`10% base + ${(state.upgrades.critC - 1) * 2}% upgrade${state.milestones?.dragonsLuck ? ' + 5% milestone' : ''}${su.luckyStrike ? ` + ${su.luckyStrike * 3}% shard` : ''}`} />
+              <Row label="Crit Multiplier" value={`${critMult.toFixed(1)}×`}
+                detail={`5× base + ${((state.upgrades.critM - 1) * 0.5).toFixed(1)}× upgrade${su.killingBlow ? ` + ${su.killingBlow}× shard` : ''}`} />
+            </Section>
+
+            <Section title="Economy">
+              <Row label="Gold Multiplier" value={`${goldMult.toFixed(2)}×`}
+                detail={`${state.upgrades.gold.toFixed(2)}× upgrade${su.goldBonus ? ` × ${(1 + su.goldBonus * 0.25).toFixed(2)}× fortune` : ''}${state.milestones?.goldVein ? ' × 1.30× gold vein' : ''}`} />
+              <Row label="Boss Gold Mult" value={`${bossGoldMult.toFixed(2)}×`}
+                detail={su.bossBane ? `gold mult × ${(1 + su.bossBane * 0.20).toFixed(2)}× boss bane` : 'No Boss Bane yet'} />
+            </Section>
+
+            <Section title="Ascension">
+              <Row label="Shards" value={fmt(state.shards)} />
+              <Row label="Global Power" value={`+${((gMult - 1) * 100).toFixed(0)}%`}
+                detail={`${state.shards} shards × 8% each`} />
+              <Row label="Ascend Now" value={`+${shardPreview} shards`}
+                detail="Includes Prestige Mastery & Soul Collector bonuses" />
+            </Section>
+
+            <Section title="Progress">
+              <Row label="Lifetime Gold" value={fmt(state.lifetimeGold)} detail="Total gold earned this run" />
+            </Section>
+          </div>
+        );
+      })()}
 
       {tab === 'milestones' && (
         <div className="item">
