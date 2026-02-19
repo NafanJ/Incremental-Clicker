@@ -12,6 +12,10 @@ export function defaultState() {
     critMult: 5,
     skillActiveUntil: 0,
     skillCooldownUntil: 0,
+    goldRushActiveUntil: 0,
+    goldRushCooldownUntil: 0,
+    bloodFrenzyActiveUntil: 0,
+    bloodFrenzyCooldownUntil: 0,
     bossEntered: false,  // true if player has entered the boss fight
     bossAttemptedThisStage: false,  // tracks if boss has been attempted in current stage
     heroes: [
@@ -28,7 +32,7 @@ export function defaultState() {
       critC: 1,
       critM: 1,
     },
-    shardUpgrades: { goldBonus: 0, bossTime: 0, prestigeBonus: 0, headStart: 0, tapSynergy: 0, heroMastery: 0, luckyStrike: 0, killingBlow: 0, bossBane: 0, soulCollector: 0, tapMastery: 0 },
+    shardUpgrades: { goldBonus: 0, bossTime: 0, prestigeBonus: 0, headStart: 0, tapSynergy: 0, heroMastery: 0, luckyStrike: 0, killingBlow: 0, bossBane: 0, soulCollector: 0, tapMastery: 0, powerSurgeDuration: 0, goldRushDuration: 0, bloodFrenzyDuration: 0 },
     shardUpgradeUnlocked: {},
     milestones: { sharpening: false, formation: false, dragonsLuck: false, goldVein: false },
     lifetimeGold: 0,

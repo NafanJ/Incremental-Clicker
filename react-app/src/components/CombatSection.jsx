@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fmt, clamp01, now, BOSS_TIME_LIMIT_MS, prestigeEarned } from '../utils/gameLogic.js';
+import { fmt, clamp01, now, BOSS_TIME_LIMIT_MS, prestigeEarned, SKILLS } from '../utils/gameLogic.js';
 import StatsBar from './StatsBar.jsx';
 
 function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy }) {
@@ -17,18 +17,6 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
     }, 100);
     return () => clearInterval(interval);
   }, [enemy.isBoss, enemy.bossStartAt, state.shardUpgrades?.bossTime]);
-
-  const handleSkill = () => {
-    const t = now();
-    if (t < state.skillCooldownUntil && t >= state.skillActiveUntil) return;
-    if (t < state.skillActiveUntil) return;
-    setState(prev => ({
-      ...prev,
-      skillActiveUntil: t + 10000,
-      skillCooldownUntil: t + 30000,
-    }));
-    addLog("Power Surge activated!");
-  };
 
   const handleEnterBoss = () => {
     setState(prev => ({ ...prev, substage: 10, bossEntered: true, bossAttemptedThisStage: true }));
@@ -64,15 +52,7 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
   };
 
   const t = now();
-  const onCd = t < state.skillCooldownUntil;
-  const active = t < state.skillActiveUntil;
-  const skillDisabled = onCd && !active;
-  const skillText = active ? "Power Surge (active)" : "Power Surge (+10s)";
-  const skillInfo = active
-    ? `Active for ${(Math.max(0, state.skillActiveUntil - t)/1000).toFixed(0)}s`
-    : onCd
-    ? `Cooldown: ${(Math.max(0, state.skillCooldownUntil - t)/1000).toFixed(0)}s`
-    : "Cooldown: 30s";
+  const activeSkills = SKILLS.filter(s => t < (state[s.activeUntilKey] ?? 0));
 
   const earn = prestigeEarned(state.stage, state.substage, state.shardUpgrades);
 
@@ -109,10 +89,11 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
           </div>
         )}
 
-        <div className="row" style={{ marginTop: '10px' }}>
-          <button className="btn" onClick={handleSkill} disabled={skillDisabled}>{skillText}</button>
-          <div className="tiny muted">{skillInfo}</div>
-        </div>
+        {activeSkills.length > 0 && (
+          <div className="tiny muted" style={{ marginTop: '8px' }}>
+            Active: {activeSkills.map(s => `${s.name} (${Math.ceil((state[s.activeUntilKey] - t) / 1000)}s)`).join(' · ')}
+          </div>
+        )}
 
         {isRound9OfBossStage && state.bossAttemptedThisStage && !state.bossEntered && (
           <div className="row" style={{ marginTop: '10px' }}>

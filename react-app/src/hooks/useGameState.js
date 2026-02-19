@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { defaultState } from '../utils/gameState.js';
 import { load, save } from '../utils/storage.js';
-import { now, SUBSTAGES_PER_STAGE, BOSS_EVERY_STAGE, BOSS_TIME_LIMIT_MS, tapDamage, heroDps, enemyMaxHp, enemyReward, enemyNameFor, globalMult, effectiveCritChance, effectiveCritMult, shardUpgradeCost, shardUpgradeUnlockCost, SHARD_UPGRADES, MILESTONES } from '../utils/gameLogic.js';
+import { now, SUBSTAGES_PER_STAGE, BOSS_EVERY_STAGE, BOSS_TIME_LIMIT_MS, tapDamage, heroDps, enemyMaxHp, enemyReward, enemyNameFor, globalMult, effectiveCritChance, effectiveCritMult, shardUpgradeCost, shardUpgradeUnlockCost, SHARD_UPGRADES, MILESTONES, SKILLS } from '../utils/gameLogic.js';
 
 export function useGameState() {
   const [state, _setStateRaw] = useState(() => {
@@ -133,12 +133,15 @@ export function useGameState() {
     setEnemyState(updatedEnemy);
 
     if (newHp === 0) {
+      const goldRushMult = (now() < (stateRef.current.goldRushActiveUntil ?? 0)) ? 3 : 1;
+      const goldEarned = Math.floor(prevEnemy.reward * goldRushMult);
       setState(prev => ({
         ...prev,
-        gold: prev.gold + prevEnemy.reward,
-        lifetimeGold: prev.lifetimeGold + prevEnemy.reward,
+        gold: prev.gold + goldEarned,
+        lifetimeGold: prev.lifetimeGold + goldEarned,
       }));
-      addLog(`${sourceLabel} defeated ${prevEnemy.name} (+${prevEnemy.reward} gold)`);
+      const goldNote = goldRushMult > 1 ? ' (Gold Rush!)' : '';
+      addLog(`${sourceLabel} defeated ${prevEnemy.name} (+${goldEarned} gold${goldNote})`);
       setTimeout(advanceStage, 0);
     }
   }, [addLog, spawnEnemy, advanceStage]);
@@ -188,8 +191,9 @@ export function useGameState() {
       ...prev,
       shards: prev.shards - cost,
       shardUpgradeUnlocked: { ...prev.shardUpgradeUnlocked, [key]: true },
+      shardUpgrades: { ...prev.shardUpgrades, [key]: 1 },
     }));
-    addLog(`Unlocked ascension upgrade: ${u?.name ?? key}`);
+    addLog(`Unlocked ascension upgrade: ${u?.name ?? key} (Level 1)`);
   }, [state, setState, addLog]);
 
   // Buy shard upgrade (level up an already-unlocked upgrade)

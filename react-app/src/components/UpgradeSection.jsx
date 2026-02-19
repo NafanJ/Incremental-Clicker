@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { upgradeCost, tapTrainingCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES, tapDamage, heroDps, effectiveCritChance, effectiveCritMult, prestigeEarned } from '../utils/gameLogic.js';
+import { upgradeCost, tapTrainingCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES, SKILLS, effectiveSkillDuration, tapDamage, heroDps, effectiveCritChance, effectiveCritMult, prestigeEarned } from '../utils/gameLogic.js';
 import SettingsSection from './SettingsSection.jsx';
 
 function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrade, buyShardUpgrade, buyMilestone }) {
@@ -62,9 +62,23 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
     },
   ];
 
+  const handleActivateSkill = (skill) => {
+    const t = now();
+    const activeUntil = state[skill.activeUntilKey] ?? 0;
+    const cooldownUntil = state[skill.cooldownUntilKey] ?? 0;
+    if (t < activeUntil || t < cooldownUntil) return;
+    const duration = effectiveSkillDuration(skill, state.shardUpgrades);
+    setState(prev => ({
+      ...prev,
+      [skill.activeUntilKey]: t + duration,
+      [skill.cooldownUntilKey]: t + skill.cooldown,
+    }));
+    addLog(`${skill.name} activated!`);
+  };
+
   const unlockedMilestones = MILESTONES.filter(m => state.stage >= m.unlockStage);
 
-  const tabs = ['upgrades', 'heroes', 'ascension', 'stats', 'milestones'];
+  const tabs = ['upgrades', 'heroes', 'skills', 'ascension', 'stats', 'milestones'];
 
   return (
     <div className="card stack">
@@ -142,6 +156,77 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
         </div>
       )}
 
+      {tab === 'skills' && (
+        <div className="item">
+          <p className="tiny muted" style={{ marginBottom: '8px' }}>Activate skills for temporary bonuses. Upgrade skill durations below (max 30s).</p>
+          <div className="list">
+            {SKILLS.map(skill => {
+              const t = now();
+              const activeUntil = state[skill.activeUntilKey] ?? 0;
+              const cooldownUntil = state[skill.cooldownUntilKey] ?? 0;
+              const isActive = t < activeUntil;
+              const onCooldown = !isActive && t < cooldownUntil;
+              const currentDuration = effectiveSkillDuration(skill, state.shardUpgrades) / 1000;
+              const durLevel = state.shardUpgrades?.[skill.durationUpgradeKey] ?? 0;
+              const maxDurLevel = 30 - skill.baseDuration;
+              const isDurUnlocked = !!(state.shardUpgradeUnlocked?.[skill.durationUpgradeKey]);
+              const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
+              const unlockCost = shardUpgradeUnlockCost(unlockedCount);
+              const durCost = shardUpgradeCost(skill.durationUpgradeKey, durLevel);
+              return (
+                <div key={skill.key} className="item">
+                  <div className="split">
+                    <div>
+                      <h3>{skill.name}</h3>
+                      <p>{skill.desc}</p>
+                      <p className="tiny muted">
+                        {isActive
+                          ? `Active: ${Math.ceil((activeUntil - t) / 1000)}s remaining`
+                          : onCooldown
+                          ? `Cooldown: ${Math.ceil((cooldownUntil - t) / 1000)}s`
+                          : `Duration: ${currentDuration}s · CD: ${skill.cooldown / 1000}s`}
+                      </p>
+                    </div>
+                    <button
+                      className={`btn${isActive ? ' primary' : ''}`}
+                      onClick={() => handleActivateSkill(skill)}
+                      disabled={isActive || onCooldown}
+                    >
+                      {isActive ? 'Active' : 'Activate'}
+                    </button>
+                  </div>
+                  <div className="split" style={{ marginTop: '6px' }}>
+                    <span className="tiny muted">
+                      Duration: {currentDuration}s{durLevel > 0 ? ` (Lv ${durLevel})` : ''}{durLevel >= maxDurLevel ? ' — maxed' : ''}
+                    </span>
+                    {durLevel < maxDurLevel && (
+                      isDurUnlocked ? (
+                        <button
+                          className="btn"
+                          disabled={state.shards < durCost}
+                          onClick={() => buyShardUpgrade(skill.durationUpgradeKey)}
+                        >
+                          +1s ({durCost} ◆)
+                        </button>
+                      ) : (
+                        <button
+                          className="btn"
+                          disabled={state.shards < unlockCost}
+                          onClick={() => unlockShardUpgrade(skill.durationUpgradeKey)}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          Unlock +1s ({unlockCost} ◆)
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {tab === 'ascension' && (
         <div className="item">
           <p className="tiny muted" style={{ marginBottom: '8px' }}>Spend ascension shards on permanent bonuses that survive prestige. Unlock new upgrades first, then level them up.</p>
@@ -149,7 +234,7 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
             {(() => {
               const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
               const nextUnlockCost = shardUpgradeUnlockCost(unlockedCount);
-              return SHARD_UPGRADES.map(u => {
+              return SHARD_UPGRADES.filter(u => !u.isDurationUpgrade).map(u => {
                 const isUnlocked = !!(state.shardUpgradeUnlocked?.[u.key]);
                 const level = state.shardUpgrades[u.key] ?? 0;
                 const levelCost = shardUpgradeCost(u.key, level);
