@@ -25,21 +25,24 @@ export function globalMult(shards) {
 export function effectiveCritChance(state) {
   const fromUpgrade = (state.upgrades.critC - 1) * 0.02;
   const fromMilestone = state.milestones?.dragonsLuck ? 0.05 : 0;
-  return state.critChance + fromUpgrade + fromMilestone;
+  const fromShard = (state.shardUpgrades?.luckyStrike ?? 0) * 0.03;
+  return state.critChance + fromUpgrade + fromMilestone + fromShard;
 }
 
 export function effectiveCritMult(state) {
-  return state.critMult + (state.upgrades.critM - 1) * 0.5;
+  const fromShard = (state.shardUpgrades?.killingBlow ?? 0) * 1.0;
+  return state.critMult + (state.upgrades.critM - 1) * 0.5 + fromShard;
 }
 
-export function tapDamage(tapLevel, tapBase, upgrades, shards, skillActiveUntil, milestones = {}) {
+export function tapDamage(tapLevel, tapBase, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}) {
   const tapUpgrade = upgrades.tap;
   const skillMult = (now() < skillActiveUntil) ? 2.5 : 1.0;
   const sharpening = milestones.sharpening ? 1.25 : 1;
-  return tapBase * Math.pow(1.15, tapLevel - 1) * tapUpgrade * globalMult(shards) * skillMult * sharpening;
+  const tapSynergy = 1 + (shardUpgrades.tapSynergy ?? 0) * 0.15;
+  return tapBase * Math.pow(1.15, tapLevel - 1) * tapUpgrade * globalMult(shards) * skillMult * sharpening * tapSynergy;
 }
 
-export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones = {}) {
+export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}) {
   const idleUpgrade = upgrades.idle;
   let dps = 0;
   for (const h of heroes) {
@@ -48,7 +51,8 @@ export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones =
   }
   const skillMult = (now() < skillActiveUntil) ? 2.0 : 1.0;
   const formation = milestones.formation ? 1.20 : 1;
-  return dps * idleUpgrade * globalMult(shards) * skillMult * formation;
+  const heroMastery = 1 + (shardUpgrades.heroMastery ?? 0) * 0.12;
+  return dps * idleUpgrade * globalMult(shards) * skillMult * formation * heroMastery;
 }
 
 export function enemyMaxHp(stage, substage, isBoss) {
@@ -62,14 +66,16 @@ export function enemyReward(stage, substage, isBoss, upgrades, shardUpgrades = {
   const goldUpgrade = upgrades.gold;
   const fortuneBonus = 1 + (shardUpgrades.goldBonus ?? 0) * 0.25;
   const goldVein = milestones.goldVein ? 1.30 : 1;
-  return Math.max(1, Math.floor(base * goldUpgrade * (isBoss ? 8 : 1) * fortuneBonus * goldVein));
+  const bossBane = isBoss ? (1 + (shardUpgrades.bossBane ?? 0) * 0.20) : 1;
+  return Math.max(1, Math.floor(base * goldUpgrade * (isBoss ? 8 : 1) * fortuneBonus * goldVein * bossBane));
 }
 
 export function prestigeEarned(stage, substage, shardUpgrades = {}) {
   // Reward based on stage reached (roughly)
   const reached = (stage - 1) * SUBSTAGES_PER_STAGE + (substage - 1);
   // Quadratic-ish curve that feels good
-  return Math.max(0, Math.floor(Math.pow(reached / 40, 1.35))) + (shardUpgrades.prestigeBonus ?? 0);
+  const soulBonus = Math.floor((shardUpgrades.soulCollector ?? 0) * 0.5);
+  return Math.max(0, Math.floor(Math.pow(reached / 40, 1.35))) + (shardUpgrades.prestigeBonus ?? 0) + soulBonus;
 }
 
 export function enemyNameFor(stage, isBoss) {
@@ -91,15 +97,25 @@ export function heroCost(hero) {
 }
 
 export const SHARD_UPGRADES = [
-  { key: 'goldBonus',     name: 'Fortune',         desc: '+25% gold income per level',        shardBase: 2, costMult: 3   },
-  { key: 'bossTime',      name: 'Boss Extension',   desc: '+5s boss timer per level',          shardBase: 2, costMult: 3   },
-  { key: 'prestigeBonus', name: 'Prestige Mastery', desc: '+1 bonus shard per ascension',      shardBase: 5, costMult: 4   },
-  { key: 'headStart',     name: 'Head Start',       desc: 'Begin at stage 2+lv after ascend',  shardBase: 3, costMult: 3.5 },
+  { key: 'goldBonus',     name: 'Fortune',          desc: '+25% gold income per level',             shardBase: 2, costMult: 3   },
+  { key: 'bossTime',      name: 'Boss Extension',    desc: '+5s boss timer per level',               shardBase: 2, costMult: 3   },
+  { key: 'prestigeBonus', name: 'Prestige Mastery',  desc: '+1 bonus shard per ascension',           shardBase: 5, costMult: 4   },
+  { key: 'headStart',     name: 'Head Start',        desc: 'Begin at stage 2+lv after ascend',       shardBase: 3, costMult: 3.5 },
+  { key: 'tapSynergy',    name: 'Tap Synergy',       desc: '+15% tap damage per level',              shardBase: 3, costMult: 3   },
+  { key: 'heroMastery',   name: 'Hero Mastery',      desc: '+12% hero DPS per level',                shardBase: 3, costMult: 3   },
+  { key: 'luckyStrike',   name: 'Lucky Strike',      desc: '+3% crit chance per level',              shardBase: 4, costMult: 3.5 },
+  { key: 'killingBlow',   name: 'Killing Blow',      desc: '+1× crit multiplier per level',          shardBase: 4, costMult: 3.5 },
+  { key: 'bossBane',      name: 'Boss Bane',         desc: '+20% boss gold reward per level',        shardBase: 4, costMult: 3.5 },
+  { key: 'soulCollector', name: 'Soul Collector',    desc: '+0.5 bonus shards per ascension/level',  shardBase: 6, costMult: 4   },
 ];
 
 export function shardUpgradeCost(key, level) {
   const def = SHARD_UPGRADES.find(u => u.key === key);
   return Math.ceil(def.shardBase * Math.pow(def.costMult, level));
+}
+
+export function shardUpgradeUnlockCost(unlockedCount) {
+  return Math.ceil(2 * Math.pow(2, unlockedCount));
 }
 
 export const MILESTONES = [
