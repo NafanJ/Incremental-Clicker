@@ -76,7 +76,11 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
               {enemy.isBoss && <span className="pill">BOSS</span>}
             </p>
           </div>
-          <button className="btn primary" onClick={tap}>Tap Attack</button>
+          <button
+            className="btn primary"
+            onClick={tap}
+            onTouchStart={(e) => { e.preventDefault(); tap(); }}
+          >Tap Attack</button>
         </div>
 
         <div className="progress" style={{ marginTop: '10px' }}>

@@ -1,4 +1,4 @@
-import { save, reset } from '../utils/storage.js';
+import { save, load, reset } from '../utils/storage.js';
 import { defaultState } from '../utils/gameState.js';
 import { now } from '../utils/gameLogic.js';
 
@@ -10,9 +10,14 @@ function SettingsSection({ state, setState, addLog, spawnEnemy }) {
   };
 
   const handleLoad = () => {
-    // Reload the page or something, but for simplicity, we can reload state
-    // Since load is in useGameState, perhaps trigger a reload
-    window.location.reload();
+    const loaded = load();
+    if (loaded) {
+      setState({ ...loaded, lastTick: now() });
+      spawnEnemy();
+      addLog("Game loaded.");
+    } else {
+      addLog("No saved game found.");
+    }
   };
 
   const handleReset = () => {
