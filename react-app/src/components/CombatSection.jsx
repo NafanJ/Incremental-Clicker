@@ -1,8 +1,24 @@
 import { useState, useEffect } from 'react';
-import { fmt, clamp01, now, BOSS_TIME_LIMIT_MS, prestigeEarned, SKILLS } from '../utils/gameLogic.js';
-import StatsBar from './StatsBar.jsx';
+import { fmt, clamp01, now, BOSS_TIME_LIMIT_MS, SKILLS } from '../utils/gameLogic.js';
 
-function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy }) {
+function LogPanel({ log }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ width: '100%' }}>
+      <button className="log-toggle" onClick={() => setOpen(o => !o)}>
+        <span>Game Log</span>
+        <span>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="log-panel">
+          {log.map((msg, i) => <div key={i}>{msg}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy, activateSkill }) {
   const [bossTimer, setBossTimer] = useState(0);
 
   useEffect(() => {
@@ -20,78 +36,62 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
 
   const handleEnterBoss = () => {
     setState(prev => ({ ...prev, substage: 10, bossEntered: true, bossAttemptedThisStage: true }));
-    addLog("Entering boss fight...");
+    addLog('Entering boss fight...');
     spawnEnemy();
   };
 
   const handleExitBoss = () => {
     setState(prev => ({ ...prev, bossEntered: false, substage: 9 }));
-    addLog("Exited boss fight. Returned to minor enemy.");
-    spawnEnemy();
-  };
-
-  const handlePrestige = () => {
-    const earned = prestigeEarned(state.stage, state.substage, state.shardUpgrades);
-    if (earned <= 0) return;
-    setState(prev => ({
-      ...prev,
-      shards: prev.shards + earned,
-      gold: 0,
-      stage: 1 + (prev.shardUpgrades?.headStart ?? 0),
-      substage: 1,
-      bossEntered: false,
-      bossAttemptedThisStage: false,
-      heroes: prev.heroes.map(h => ({ ...h, level: 0 })),
-      upgrades: { tap: 0, gold: 1, idle: 1, critC: 1, critM: 1 },
-      lifetimeGold: 0,
-      lastTick: now(),
-      lastSave: now(),
-    }));
-    addLog(`Ascended and gained ${earned} shards. Permanent power increased.`);
+    addLog('Exited boss fight. Returned to minor enemy.');
     spawnEnemy();
   };
 
   const t = now();
   const activeSkills = SKILLS.filter(s => t < (state[s.activeUntilKey] ?? 0));
 
-  const earn = prestigeEarned(state.stage, state.substage, state.shardUpgrades);
+  const isBossStage = (state.stage % 1 === 0);
+  const isRound9OfBossStage  = state.substage === 9  && isBossStage;
+  const isRound10OfBossStage = state.substage === 10 && isBossStage;
 
-  const isBossStage = (state.stage % 1 === 0); // every stage
-  const isRound9OfBossStage = (state.substage === 9) && isBossStage;
-  const isRound10OfBossStage = (state.substage === 10) && isBossStage;
+  const hpPct = clamp01(enemy.hp / enemy.hpMax);
 
   return (
-    <div className="card stack">
-      <StatsBar state={state} />
+    <div className="combat-zone">
 
-      <div className="item">
-        <div className="split">
-          <div>
-            <h3>{enemy.name}</h3>
-            <p className="tiny">
-              HP: <b><span>{Math.floor(enemy.hp).toLocaleString("en-GB")}</span></b> / <span>{Math.floor(enemy.hpMax).toLocaleString("en-GB")}</span>
-              <span className="muted">•</span>
-              Reward: <b>{fmt(enemy.reward)}</b> gold
-              <span className="muted">•</span>
-              {enemy.isBoss && <span className="pill">BOSS</span>}
-            </p>
+      {/* ── Enemy Card ── */}
+      <div className="enemy-card">
+        <div className="enemy-card__header">
+          <h3 className="enemy-card__name">{enemy.name}</h3>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            {enemy.isBoss && <span className="boss-badge">BOSS</span>}
+            <span className="pill pill--gold">+{fmt(enemy.reward)}g</span>
           </div>
-          <button className="btn primary" onClick={tap}>Tap Attack</button>
         </div>
 
-        <div className="progress" style={{ marginTop: '10px' }}>
-          <div className="bar" style={{ width: `${clamp01(enemy.hp / enemy.hpMax) * 100}%` }}></div>
+        <p className="enemy-card__meta">
+          HP: <b>{Math.floor(enemy.hp).toLocaleString('en-GB')}</b>
+          {' / '}
+          {Math.floor(enemy.hpMax).toLocaleString('en-GB')}
+        </p>
+
+        <div className="progress">
+          <div
+            className={`bar${hpPct < 0.25 ? ' bar--low' : ''}`}
+            style={{ width: `${hpPct * 100}%` }}
+          />
         </div>
 
         {enemy.isBoss && (
-          <div className="progress" style={{ marginTop: '10px' }}>
-            <div className="bar" style={{ background: 'linear-gradient(90deg, #ff6b6b, #ffa06b)', width: `${bossTimer * 100}%` }}></div>
+          <div className="progress progress--boss-timer">
+            <div className="bar bar--boss" style={{ width: `${bossTimer * 100}%` }} />
           </div>
         )}
 
         {activeSkills.length > 0 && (
-          <div className="tiny muted" style={{ marginTop: '8px' }}>
-            Active: {activeSkills.map(s => `${s.name} (${Math.ceil((state[s.activeUntilKey] - t) / 1000)}s)`).join(' · ')}
+          <div className="tiny muted" style={{ marginTop: '6px' }}>
+            Active: {activeSkills.map(s =>
+              `${s.name} (${Math.ceil((state[s.activeUntilKey] - t) / 1000)}s)`
+            ).join(' · ')}
           </div>
         )}
 
@@ -108,20 +108,42 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy })
         )}
       </div>
 
-      <div className="item">
-        <div className="row">
-          <div>
-            <h3 style={{ margin: '0 0 4px', fontSize: '14px' }}>Prestige</h3>
-            <p className="tiny">Reset to earn shards. Shards give permanent global damage.</p>
-          </div>
-          <button className="btn danger" onClick={handlePrestige} disabled={earn <= 0}>Ascend</button>
-        </div>
-        <div className="tiny muted">Earn <b>{fmt(earn)}</b> shards if you ascend now.</div>
+      {/* ── Tap Button ── */}
+      <div className="tap-zone">
+        <button className="tap-btn" onClick={tap}>
+          TAP
+          <span className="tap-btn__sub">Attack</span>
+        </button>
       </div>
 
-      <div className="log">
-        {log.map((msg, i) => <div key={i}>{msg}</div>)}
+      {/* ── Skills Row ── */}
+      <div className="skills-row">
+        {SKILLS.map(skill => {
+          const isActive  = t < (state[skill.activeUntilKey]   ?? 0);
+          const onCooldown = !isActive && t < (state[skill.cooldownUntilKey] ?? 0);
+          return (
+            <button
+              key={skill.key}
+              className={`skill-btn${isActive ? ' skill-active' : ''}`}
+              onClick={() => activateSkill(skill)}
+              disabled={isActive || onCooldown}
+            >
+              <span className="skill-btn__name">{skill.name}</span>
+              <span className="skill-btn__status">
+                {isActive
+                  ? `${Math.ceil((state[skill.activeUntilKey] - t) / 1000)}s left`
+                  : onCooldown
+                    ? `CD ${Math.ceil((state[skill.cooldownUntilKey] - t) / 1000)}s`
+                    : `${skill.cooldown / 1000}s CD`}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* ── Collapsible Game Log ── */}
+      <LogPanel log={log} />
+
     </div>
   );
 }

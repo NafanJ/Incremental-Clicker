@@ -1,9 +1,18 @@
 import { useState } from 'react';
-import { upgradeCost, tapTrainingCost, heroCost, fmt, globalMult, now, SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost, MILESTONES, SKILLS, effectiveSkillDuration, tapDamage, heroDps, effectiveCritChance, effectiveCritMult, prestigeEarned } from '../utils/gameLogic.js';
+import {
+  upgradeCost, tapTrainingCost, heroCost, fmt, globalMult, now,
+  SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost,
+  MILESTONES, SKILLS, effectiveSkillDuration, effectiveCritChance,
+  effectiveCritMult, tapDamage, heroDps, prestigeEarned,
+} from '../utils/gameLogic.js';
 import SettingsSection from './SettingsSection.jsx';
 
-function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrade, buyShardUpgrade, buyMilestone }) {
-  const [tab, setTab] = useState('upgrades');
+function UpgradeSection({
+  state, setState, addLog, spawnEnemy,
+  unlockShardUpgrade, buyShardUpgrade, buyMilestone,
+  activeTab, activateSkill, handlePrestige,
+}) {
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const handleUpgrade = (key) => {
     const cost = key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(key, state.upgrades);
@@ -31,346 +40,356 @@ function UpgradeSection({ state, setState, addLog, spawnEnemy, unlockShardUpgrad
 
   const upgradeList = [
     {
-      key: "tap",
-      title: "Tap Training",
-      desc: "Each training session increases your flat tap damage base.",
-      effect: () => `Sessions: ${state.upgrades.tap} (tap base: ${(state.tapBase + state.upgrades.tap * 0.5).toFixed(1)})`,
+      key: 'tap',
+      title: 'Tap Training',
+      desc: 'Each session increases your flat tap damage base.',
+      effect: () => `Sessions: ${state.upgrades.tap} (base: ${(state.tapBase + state.upgrades.tap * 0.5).toFixed(1)})`,
     },
     {
-      key: "idle",
-      title: "Hero Discipline",
-      desc: "Increases hero DPS multiplier.",
+      key: 'idle',
+      title: 'Hero Discipline',
+      desc: 'Increases hero DPS multiplier.',
       effect: () => `Current: ${state.upgrades.idle.toFixed(2)}×`,
     },
     {
-      key: "gold",
-      title: "Gold Magnet",
-      desc: "Increases gold earned from kills.",
+      key: 'gold',
+      title: 'Gold Magnet',
+      desc: 'Increases gold earned from kills.',
       effect: () => `Current: ${state.upgrades.gold.toFixed(2)}×`,
     },
     {
-      key: "critC",
-      title: "Crit Chance",
-      desc: "Increases critical hit chance by 2% per level.",
+      key: 'critC',
+      title: 'Crit Chance',
+      desc: 'Increases critical hit chance by 2% per level.',
       effect: () => `Bonus: +${(state.upgrades.critC - 1) * 2}%`,
     },
     {
-      key: "critM",
-      title: "Crit Multiplier",
-      desc: "Increases critical hit multiplier by 0.5× per level.",
+      key: 'critM',
+      title: 'Crit Multiplier',
+      desc: 'Increases critical hit multiplier by 0.5× per level.',
       effect: () => `Bonus: +${((state.upgrades.critM - 1) * 0.5).toFixed(1)}×`,
     },
   ];
 
-  const handleActivateSkill = (skill) => {
-    const t = now();
-    const activeUntil = state[skill.activeUntilKey] ?? 0;
-    const cooldownUntil = state[skill.cooldownUntilKey] ?? 0;
-    if (t < activeUntil || t < cooldownUntil) return;
-    const duration = effectiveSkillDuration(skill, state.shardUpgrades);
-    setState(prev => ({
-      ...prev,
-      [skill.activeUntilKey]: t + duration,
-      [skill.cooldownUntilKey]: t + skill.cooldown,
-    }));
-    addLog(`${skill.name} activated!`);
-  };
-
   const unlockedMilestones = MILESTONES.filter(m => state.stage >= m.unlockStage);
 
-  const tabs = ['upgrades', 'heroes', 'skills', 'ascension', 'stats', 'milestones'];
+  // Computed values used by Ascension tab
+  const su = state.shardUpgrades ?? {};
+  const earn = prestigeEarned(state.stage, state.substage, su);
+  const gMult = globalMult(state.shards);
+  const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
+  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
+  const critChance = effectiveCritChance(state);
+  const critMult = effectiveCritMult(state);
+  const goldMult = state.upgrades.gold * (1 + (su.goldBonus ?? 0) * 0.25) * (state.milestones?.goldVein ? 1.30 : 1);
+  const bossGoldMult = goldMult * (1 + (su.bossBane ?? 0) * 0.20);
 
   return (
-    <div className="card stack">
-      <div className="row" style={{ gap: '4px', flexWrap: 'wrap' }}>
-        {tabs.map(t => (
-          <button
-            key={t}
-            className={`btn${tab === t ? ' primary' : ''}`}
-            onClick={() => setTab(t)}
-            style={{ flex: '1' }}
-          >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
-      </div>
+    <div>
 
-      {tab === 'upgrades' && (
-        <div className="item">
-          <div className="list">
-            {upgradeList.map(u => {
-              const cost = u.key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(u.key, state.upgrades);
-              return (
-                <div key={u.key} className="item">
-                  <div className="split">
-                    <div>
-                      <h3>{u.title}</h3>
-                      <p>{u.desc} <span className="muted">{u.effect()}</span></p>
-                    </div>
-                    <button
-                      className="btn"
-                      disabled={state.gold < cost}
-                      onClick={() => handleUpgrade(u.key)}
-                    >
-                      Buy ({fmt(cost)})
-                    </button>
-                  </div>
+      {/* ── Upgrades Tab ── */}
+      {activeTab === 'upgrades' && (
+        <div>
+          {upgradeList.map(u => {
+            const cost = u.key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(u.key, state.upgrades);
+            const canAfford = state.gold >= cost;
+            return (
+              <div key={u.key} className="upgrade-item">
+                <div className="upgrade-item__info">
+                  <div className="upgrade-item__title">{u.title}</div>
+                  <div className="upgrade-item__desc">{u.desc}</div>
+                  <div className="upgrade-item__effect">{u.effect()}</div>
                 </div>
-              );
-            })}
-          </div>
+                <button
+                  className={`btn${canAfford ? ' primary' : ''}`}
+                  disabled={!canAfford}
+                  onClick={() => handleUpgrade(u.key)}
+                >
+                  {fmt(cost)}g
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {tab === 'heroes' && (
-        <div className="item">
-          <div className="list">
-            {state.heroes.map(h => {
-              const unlocked = state.stage >= h.unlockStage;
-              const cost = heroCost(h);
-              const currentDps = h.level > 0
-                ? h.baseDps * Math.pow(h.dpsMultPerLevel, h.level - 1) * state.upgrades.idle * globalMult(state.shards) * ((now() < state.skillActiveUntil) ? 2.0 : 1.0)
-                : 0;
-              return (
-                <div key={h.id} className="item">
-                  <div className="split">
-                    <div>
-                      <h3>{h.name} <span className="muted">Lv {h.level}</span></h3>
-                      <p>{unlocked
-                        ? <span>Idle DPS. Contribution: <b>{fmt(currentDps)}</b>/s</span>
-                        : `Unlocks at Stage ${h.unlockStage}.`}
-                      </p>
-                    </div>
-                    <button
-                      className="btn"
-                      disabled={!unlocked || state.gold < cost}
-                      onClick={() => handleHeroUpgrade(h.id)}
-                    >
-                      Upgrade ({fmt(cost)})
-                    </button>
+      {/* ── Heroes Tab ── */}
+      {activeTab === 'heroes' && (
+        <div>
+          {state.heroes.map(h => {
+            const unlocked = state.stage >= h.unlockStage;
+            const cost = heroCost(h);
+            const canAfford = unlocked && state.gold >= cost;
+            const currentDps = h.level > 0
+              ? h.baseDps * Math.pow(h.dpsMultPerLevel, h.level - 1)
+                * state.upgrades.idle * gMult
+                * (now() < state.skillActiveUntil ? 2.0 : 1.0)
+              : 0;
+            return (
+              <div key={h.id} className="upgrade-item">
+                <div className="upgrade-item__info">
+                  <div className="upgrade-item__title">
+                    {h.name} <span className="muted">Lv {h.level}</span>
+                  </div>
+                  <div className="upgrade-item__desc">
+                    {unlocked
+                      ? <>Idle DPS. Contribution: <b>{fmt(currentDps)}</b>/s</>
+                      : `Unlocks at Stage ${h.unlockStage}`}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <button
+                  className={`btn${canAfford ? ' primary' : ''}`}
+                  disabled={!canAfford}
+                  onClick={() => handleHeroUpgrade(h.id)}
+                >
+                  {unlocked ? `${fmt(cost)}g` : `Stage ${h.unlockStage}`}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {tab === 'skills' && (
-        <div className="item">
-          <p className="tiny muted" style={{ marginBottom: '8px' }}>Activate skills for temporary bonuses. Upgrade skill durations below (max 30s).</p>
-          <div className="list">
-            {SKILLS.map(skill => {
-              const t = now();
-              const activeUntil = state[skill.activeUntilKey] ?? 0;
-              const cooldownUntil = state[skill.cooldownUntilKey] ?? 0;
-              const isActive = t < activeUntil;
-              const onCooldown = !isActive && t < cooldownUntil;
-              const currentDuration = effectiveSkillDuration(skill, state.shardUpgrades) / 1000;
-              const durLevel = state.shardUpgrades?.[skill.durationUpgradeKey] ?? 0;
-              const maxDurLevel = 30 - skill.baseDuration;
-              const isDurUnlocked = !!(state.shardUpgradeUnlocked?.[skill.durationUpgradeKey]);
-              const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
-              const unlockCost = shardUpgradeUnlockCost(unlockedCount);
-              const durCost = shardUpgradeCost(skill.durationUpgradeKey, durLevel);
-              return (
-                <div key={skill.key} className="item">
-                  <div className="split">
-                    <div>
-                      <h3>{skill.name}</h3>
-                      <p>{skill.desc}</p>
-                      <p className="tiny muted">
+      {/* ── Skills Tab ── */}
+      {activeTab === 'skills' && (
+        <div>
+          <p className="tiny muted" style={{ marginBottom: '12px' }}>
+            Upgrade skill durations with Shards (◆). Activate skills from the combat area.
+          </p>
+          {SKILLS.map(skill => {
+            const t = now();
+            const isActive   = t < (state[skill.activeUntilKey]   ?? 0);
+            const onCooldown = !isActive && t < (state[skill.cooldownUntilKey] ?? 0);
+            const currentDuration = effectiveSkillDuration(skill, state.shardUpgrades) / 1000;
+            const durLevel   = state.shardUpgrades?.[skill.durationUpgradeKey] ?? 0;
+            const maxDurLevel = 30 - skill.baseDuration;
+            const isDurUnlocked = !!(state.shardUpgradeUnlocked?.[skill.durationUpgradeKey]);
+            const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
+            const unlockCost = shardUpgradeUnlockCost(unlockedCount);
+            const durCost = shardUpgradeCost(skill.durationUpgradeKey, durLevel);
+            return (
+              <div key={skill.key} className="upgrade-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                <div className="split">
+                  <div>
+                    <div className="upgrade-item__title">{skill.name}</div>
+                    <div className="upgrade-item__desc">{skill.desc}</div>
+                    <div className="upgrade-item__effect">
+                      {currentDuration}s duration · {skill.cooldown / 1000}s CD
+                      {durLevel > 0 && ` (Lv ${durLevel})`}
+                      {' · '}
+                      <span style={{ color: isActive ? 'var(--green)' : onCooldown ? 'var(--red)' : 'var(--muted)' }}>
                         {isActive
-                          ? `Active: ${Math.ceil((activeUntil - t) / 1000)}s remaining`
+                          ? `Active ${Math.ceil((state[skill.activeUntilKey] - t) / 1000)}s`
                           : onCooldown
-                          ? `Cooldown: ${Math.ceil((cooldownUntil - t) / 1000)}s`
-                          : `Duration: ${currentDuration}s · CD: ${skill.cooldown / 1000}s`}
-                      </p>
+                            ? `CD ${Math.ceil((state[skill.cooldownUntilKey] - t) / 1000)}s`
+                            : 'Ready'}
+                      </span>
                     </div>
-                    <button
-                      className={`btn${isActive ? ' primary' : ''}`}
-                      onClick={() => handleActivateSkill(skill)}
-                      disabled={isActive || onCooldown}
-                    >
-                      {isActive ? 'Active' : 'Activate'}
-                    </button>
                   </div>
-                  <div className="split" style={{ marginTop: '6px' }}>
-                    <span className="tiny muted">
-                      Duration: {currentDuration}s{durLevel > 0 ? ` (Lv ${durLevel})` : ''}{durLevel >= maxDurLevel ? ' — maxed' : ''}
-                    </span>
-                    {durLevel < maxDurLevel && (
-                      isDurUnlocked ? (
-                        <button
-                          className="btn"
-                          disabled={state.shards < durCost}
-                          onClick={() => buyShardUpgrade(skill.durationUpgradeKey)}
-                        >
-                          +1s ({durCost} ◆)
-                        </button>
-                      ) : (
-                        <button
-                          className="btn"
-                          disabled={state.shards < unlockCost}
-                          onClick={() => unlockShardUpgrade(skill.durationUpgradeKey)}
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          Unlock +1s ({unlockCost} ◆)
-                        </button>
-                      )
-                    )}
-                  </div>
+                  <button
+                    className={`btn${isActive ? ' primary' : ''}`}
+                    onClick={() => activateSkill(skill)}
+                    disabled={isActive || onCooldown}
+                  >
+                    {isActive ? 'Active' : 'Activate'}
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {tab === 'ascension' && (
-        <div className="item">
-          <p className="tiny muted" style={{ marginBottom: '8px' }}>Spend ascension shards on permanent bonuses that survive prestige. Unlock new upgrades first, then level them up.</p>
-          <div className="list">
-            {(() => {
-              const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
-              const nextUnlockCost = shardUpgradeUnlockCost(unlockedCount);
-              return SHARD_UPGRADES.filter(u => !u.isDurationUpgrade).map(u => {
-                const isUnlocked = !!(state.shardUpgradeUnlocked?.[u.key]);
-                const level = state.shardUpgrades[u.key] ?? 0;
-                const levelCost = shardUpgradeCost(u.key, level);
-                return (
-                  <div key={u.key} className="item" style={{ opacity: isUnlocked ? 1 : 0.65 }}>
-                    <div className="split">
-                      <div>
-                        <h3>
-                          {isUnlocked ? null : <span style={{ marginRight: '6px' }}>🔒</span>}
-                          {u.name}
-                          {isUnlocked && <span className="muted"> Lv {level}</span>}
-                        </h3>
-                        <p>{u.desc}</p>
-                      </div>
-                      {isUnlocked ? (
-                        <button
-                          className="btn"
-                          disabled={state.shards < levelCost}
-                          onClick={() => buyShardUpgrade(u.key)}
-                        >
-                          {levelCost} ◆
-                        </button>
-                      ) : (
-                        <button
-                          className="btn"
-                          disabled={state.shards < nextUnlockCost}
-                          onClick={() => unlockShardUpgrade(u.key)}
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          Unlock {nextUnlockCost} ◆
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-      )}
-
-      {tab === 'stats' && (() => {
-        const su = state.shardUpgrades ?? {};
-        const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
-        const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
-        const critChance = effectiveCritChance(state);
-        const critMult = effectiveCritMult(state);
-        const gMult = globalMult(state.shards);
-        const goldMult = state.upgrades.gold * (1 + (su.goldBonus ?? 0) * 0.25) * (state.milestones?.goldVein ? 1.30 : 1);
-        const bossGoldMult = goldMult * (1 + (su.bossBane ?? 0) * 0.20);
-        const shardPreview = prestigeEarned(state.stage, state.substage, su);
-
-        const Row = ({ label, value, detail }) => (
-          <div className="item" style={{ padding: '6px 0' }}>
-            <div className="split">
-              <span className="muted" style={{ fontSize: '13px' }}>{label}</span>
-              <b style={{ fontSize: '14px' }}>{value}</b>
-            </div>
-            {detail && <p className="tiny muted" style={{ marginTop: '2px' }}>{detail}</p>}
-          </div>
-        );
-
-        const Section = ({ title, children }) => (
-          <div style={{ marginBottom: '12px' }}>
-            <div className="tiny muted" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{title}</div>
-            {children}
-          </div>
-        );
-
-        return (
-          <div className="item">
-            <Section title="Offensive">
-              <Row label="Tap Damage" value={fmt(tapDmg)}
-                detail={`base ${(state.tapBase + state.upgrades.tap * 0.5).toFixed(1)}${su.tapSynergy ? ` × ${(1 + su.tapSynergy * 0.15).toFixed(2)}× synergy` : ''}${su.tapMastery ? ` × ${(1 + su.tapMastery * 0.20).toFixed(2)}× mastery` : ''} × ${gMult.toFixed(2)}× global`} />
-              <Row label="Hero DPS" value={`${fmt(hDps)}/s`}
-                detail={`hero sum × ${state.upgrades.idle.toFixed(2)}× idle-upgrade${su.heroMastery ? ` × ${(1 + su.heroMastery * 0.12).toFixed(2)}× mastery` : ''} × ${gMult.toFixed(2)}× global`} />
-              <Row label="Crit Chance" value={`${Math.round(critChance * 100)}%`}
-                detail={`10% base + ${(state.upgrades.critC - 1) * 2}% upgrade${state.milestones?.dragonsLuck ? ' + 5% milestone' : ''}${su.luckyStrike ? ` + ${su.luckyStrike * 3}% shard` : ''}`} />
-              <Row label="Crit Multiplier" value={`${critMult.toFixed(1)}×`}
-                detail={`5× base + ${((state.upgrades.critM - 1) * 0.5).toFixed(1)}× upgrade${su.killingBlow ? ` + ${su.killingBlow}× shard` : ''}`} />
-            </Section>
-
-            <Section title="Economy">
-              <Row label="Gold Multiplier" value={`${goldMult.toFixed(2)}×`}
-                detail={`${state.upgrades.gold.toFixed(2)}× upgrade${su.goldBonus ? ` × ${(1 + su.goldBonus * 0.25).toFixed(2)}× fortune` : ''}${state.milestones?.goldVein ? ' × 1.30× gold vein' : ''}`} />
-              <Row label="Boss Gold Mult" value={`${bossGoldMult.toFixed(2)}×`}
-                detail={su.bossBane ? `gold mult × ${(1 + su.bossBane * 0.20).toFixed(2)}× boss bane` : 'No Boss Bane yet'} />
-            </Section>
-
-            <Section title="Ascension">
-              <Row label="Shards" value={fmt(state.shards)} />
-              <Row label="Global Power" value={`+${((gMult - 1) * 100).toFixed(0)}%`}
-                detail={`${state.shards} shards × 8% each`} />
-              <Row label="Ascend Now" value={`+${shardPreview} shards`}
-                detail="Includes Prestige Mastery & Soul Collector bonuses" />
-            </Section>
-
-            <Section title="Progress">
-              <Row label="Lifetime Gold" value={fmt(state.lifetimeGold)} detail="Total gold earned this run" />
-            </Section>
-          </div>
-        );
-      })()}
-
-      {tab === 'milestones' && (
-        <div className="item">
-          {unlockedMilestones.length === 0 ? (
-            <p className="tiny muted">No milestones unlocked yet. Reach Stage {MILESTONES[0].unlockStage} to unlock the first one.</p>
-          ) : (
-            <div className="list">
-              {unlockedMilestones.map(m => {
-                const bought = state.milestones[m.key];
-                return (
-                  <div key={m.key} className="item">
-                    <div className="split">
-                      <div>
-                        <h3>{m.name} {bought && <span className="pill">Owned</span>}</h3>
-                        <p>{m.desc}</p>
-                      </div>
+                {durLevel < maxDurLevel && (
+                  <div className="split">
+                    <span className="tiny muted">Duration upgrade</span>
+                    {isDurUnlocked ? (
                       <button
                         className="btn"
-                        disabled={bought || state.gold < m.goldCost}
-                        onClick={() => buyMilestone(m.key)}
+                        disabled={state.shards < durCost}
+                        onClick={() => buyShardUpgrade(skill.durationUpgradeKey)}
                       >
-                        {bought ? 'Owned' : `Buy (${fmt(m.goldCost)})`}
+                        +1s ({durCost}◆)
                       </button>
-                    </div>
+                    ) : (
+                      <button
+                        className="btn"
+                        disabled={state.shards < unlockCost}
+                        onClick={() => unlockShardUpgrade(skill.durationUpgradeKey)}
+                      >
+                        Unlock ({unlockCost}◆)
+                      </button>
+                    )}
                   </div>
-                );
-              })}
+                )}
+                {durLevel >= maxDurLevel && (
+                  <span className="tiny muted">Duration maxed at 30s</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Ascension Tab ── */}
+      {activeTab === 'ascension' && (
+        <div>
+          {/* Prestige Card */}
+          <div className="prestige-card">
+            <div className="prestige-card__title">⚡ Ascend</div>
+            <p className="prestige-card__desc">
+              Reset your run to gain permanent Ascension Shards.
+              Each shard grants +8% global damage permanently.
+            </p>
+            <button
+              className="btn danger"
+              onClick={handlePrestige}
+              disabled={earn <= 0}
+              style={{ width: '100%' }}
+            >
+              Ascend — Earn {fmt(earn)} Shards
+            </button>
+            <p className="prestige-card__preview">
+              Current global bonus: <b>+{((gMult - 1) * 100).toFixed(0)}%</b>
+              {' from '}<b>{state.shards}</b> shards
+            </p>
+          </div>
+
+          {/* Shard Upgrades */}
+          <div className="panel-section-title">Permanent Upgrades (◆ Shards)</div>
+          <p className="tiny muted" style={{ marginBottom: '10px' }}>
+            Unlock new upgrades first, then level them up. Survive prestige resets.
+          </p>
+          {(() => {
+            const unlockedCount = Object.values(state.shardUpgradeUnlocked ?? {}).filter(Boolean).length;
+            const nextUnlockCost = shardUpgradeUnlockCost(unlockedCount);
+            return SHARD_UPGRADES.filter(u => !u.isDurationUpgrade).map(u => {
+              const isUnlocked = !!(state.shardUpgradeUnlocked?.[u.key]);
+              const level = state.shardUpgrades[u.key] ?? 0;
+              const levelCost = shardUpgradeCost(u.key, level);
+              return (
+                <div key={u.key} className="upgrade-item" style={{ opacity: isUnlocked ? 1 : 0.65 }}>
+                  <div className="upgrade-item__info">
+                    <div className="upgrade-item__title">
+                      {!isUnlocked && <span style={{ marginRight: '5px' }}>🔒</span>}
+                      {u.name}
+                      {isUnlocked && <span className="muted"> Lv {level}</span>}
+                    </div>
+                    <div className="upgrade-item__desc">{u.desc}</div>
+                  </div>
+                  {isUnlocked ? (
+                    <button
+                      className="btn"
+                      disabled={state.shards < levelCost}
+                      onClick={() => buyShardUpgrade(u.key)}
+                    >
+                      {levelCost}◆
+                    </button>
+                  ) : (
+                    <button
+                      className="btn"
+                      disabled={state.shards < nextUnlockCost}
+                      onClick={() => unlockShardUpgrade(u.key)}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      Unlock {nextUnlockCost}◆
+                    </button>
+                  )}
+                </div>
+              );
+            });
+          })()}
+
+          {/* Stats Toggle */}
+          <button className="stats-toggle" onClick={() => setStatsOpen(o => !o)}>
+            <span>📊 View Stats</span>
+            <span>{statsOpen ? '▲' : '▼'}</span>
+          </button>
+          {statsOpen && (
+            <div className="stats-content">
+              <div className="stat-section-title">Offensive</div>
+              <div className="stat-row">
+                <span className="stat-row__label">Tap Damage</span>
+                <b className="stat-row__value">{fmt(tapDmg)}</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Hero DPS</span>
+                <b className="stat-row__value">{fmt(hDps)}/s</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Crit Chance</span>
+                <b className="stat-row__value">{Math.round(critChance * 100)}%</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Crit Multiplier</span>
+                <b className="stat-row__value">{critMult.toFixed(1)}×</b>
+              </div>
+              <div className="stat-section-title">Economy</div>
+              <div className="stat-row">
+                <span className="stat-row__label">Gold Multiplier</span>
+                <b className="stat-row__value">{goldMult.toFixed(2)}×</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Boss Gold</span>
+                <b className="stat-row__value">{bossGoldMult.toFixed(2)}×</b>
+              </div>
+              <div className="stat-section-title">Ascension</div>
+              <div className="stat-row">
+                <span className="stat-row__label">Shards Held</span>
+                <b className="stat-row__value">{fmt(state.shards)}</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Global Power</span>
+                <b className="stat-row__value">+{((gMult - 1) * 100).toFixed(0)}%</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Ascend Now</span>
+                <b className="stat-row__value">+{earn} shards</b>
+              </div>
+              <div className="stat-section-title">Progress</div>
+              <div className="stat-row">
+                <span className="stat-row__label">Lifetime Gold</span>
+                <b className="stat-row__value">{fmt(state.lifetimeGold)}</b>
+              </div>
             </div>
+          )}
+
+          {/* Settings inside Ascension tab */}
+          <div style={{ marginTop: '16px' }}>
+            <SettingsSection state={state} setState={setState} addLog={addLog} spawnEnemy={spawnEnemy} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Milestones Tab ── */}
+      {activeTab === 'milestones' && (
+        <div>
+          {unlockedMilestones.length === 0 ? (
+            <div className="item">
+              <p className="tiny muted">
+                No milestones unlocked yet. Reach Stage {MILESTONES[0].unlockStage} to unlock the first one.
+              </p>
+            </div>
+          ) : (
+            unlockedMilestones.map(m => {
+              const bought = state.milestones[m.key];
+              return (
+                <div key={m.key} className="upgrade-item">
+                  <div className="upgrade-item__info">
+                    <div className="upgrade-item__title">
+                      {m.name}
+                      {bought && <span className="pill pill--gold" style={{ marginLeft: '6px' }}>Owned</span>}
+                    </div>
+                    <div className="upgrade-item__desc">{m.desc}</div>
+                  </div>
+                  <button
+                    className={`btn${!bought && state.gold >= m.goldCost ? ' primary' : ''}`}
+                    disabled={bought || state.gold < m.goldCost}
+                    onClick={() => buyMilestone(m.key)}
+                  >
+                    {bought ? '✓' : `${fmt(m.goldCost)}g`}
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
       )}
 
-      <SettingsSection state={state} setState={setState} addLog={addLog} spawnEnemy={spawnEnemy} />
     </div>
   );
 }
