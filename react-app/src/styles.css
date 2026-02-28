@@ -1,28 +1,656 @@
-:root { --bg:#0b0f1a; --card:#121a2b; --ink:#e8eefc; --muted:#9fb0d0; --line:#22304f; }
-body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--ink); }
-.wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
-h1 { margin: 0 0 12px; font-size: 22px; font-weight: 800; letter-spacing: .2px; }
-.grid { display:grid; grid-template-columns: 1.1fr .9fr; gap: 12px; }
-@media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
-.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
-.row { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
-.stat { color:var(--muted); font-size: 12px; }
-.big { font-size: 30px; font-weight: 900; letter-spacing: .3px; }
-.btn { cursor:pointer; border:1px solid var(--line); background:#0f1730; color:var(--ink); padding:10px 12px; border-radius:12px; font-weight:700; }
-.btn:hover { filter: brightness(1.08); }
-.btn:active { transform: translateY(1px); }
-.btn.primary { background: #17346a; border-color:#2a4d92; }
-.btn.danger { background: #5b1b1b; border-color:#7a2a2a; }
-.btn:disabled { opacity:.5; cursor:not-allowed; }
-.stack { display:flex; flex-direction:column; gap:10px; }
-.progress { height:12px; background:#0a1023; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
-.bar { height:100%; width:0%; background: linear-gradient(90deg, #2a66ff, #68d0ff); }
-.muted { color:var(--muted); }
-.list { display:flex; flex-direction:column; gap: 10px; }
-.item { border:1px solid var(--line); border-radius:12px; padding:10px; background:#0e152c; }
-.item h3 { margin:0 0 4px; font-size: 14px; }
-.item p { margin:0; font-size: 12px; color: var(--muted); }
-.split { display:grid; grid-template-columns: 1fr auto; gap: 8px; align-items:center; }
-.pill { font-size: 11px; padding: 4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
-.log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b8c7ea; line-height: 1.4; max-height: 170px; overflow:auto; border-radius: 12px; padding: 10px; border:1px solid var(--line); background:#07102a; }
-.tiny { font-size: 11px; color: var(--muted); }
+/* ═══════════════════════════════════════════════════════════
+   Idle Ascension — Mobile-First Design System
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:        #090d18;
+  --bg-deep:   #060a12;
+  --card:      #111827;
+  --card2:     #18223a;
+  --ink:       #e8eefc;
+  --muted:     #8fa3c8;
+  --line:      #1e2d47;
+
+  --gold:      #f5c518;
+  --gold-dim:  #c9921a;
+  --gold-glow: rgba(245, 197, 24, 0.30);
+  --blue:      #2a66ff;
+  --blue-hi:   #68d0ff;
+  --blue-dim:  #17346a;
+  --red:       #e05454;
+  --red-dim:   #7a2a2a;
+  --purple:    #9b59f5;
+  --green:     #3ecf6a;
+
+  --hud-h:     54px;
+  --nav-h:     62px;
+  --touch-min: 44px;
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── App Shell ─────────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── HUD Bar (sticky top) ──────────────────────────────────── */
+.hud-bar {
+  flex-shrink: 0;
+  height: var(--hud-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  z-index: 100;
+}
+
+.hud-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hud-stat__label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.hud-stat__value {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hud-stat__value--gold   { color: var(--gold); }
+.hud-stat__value--shards { color: var(--purple); }
+.hud-stat__value--dps    { color: var(--blue-hi); }
+
+.hud-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+/* ── Main Scroll Area ──────────────────────────────────────── */
+.main-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Combat Zone ───────────────────────────────────────────── */
+.combat-zone {
+  flex-shrink: 0;
+  padding: 12px 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Panel Zone (upgrade section) ──────────────────────────── */
+.panel-zone {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 14px 14px;
+  min-height: 0;
+}
+
+/* ── Bottom Nav ────────────────────────────────────────────── */
+.bottom-nav {
+  flex-shrink: 0;
+  height: var(--nav-h);
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: stretch;
+  z-index: 100;
+}
+
+.bottom-nav__tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 6px 2px;
+  transition: color 0.15s;
+  min-height: var(--touch-min);
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+.bottom-nav__tab:hover { color: var(--ink); }
+
+.bottom-nav__tab.active {
+  color: var(--gold);
+}
+
+.bottom-nav__tab.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  width: 70%;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 0 0 3px 3px;
+}
+
+.bottom-nav__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* ── Enemy Card ────────────────────────────────────────────── */
+.enemy-card {
+  width: 100%;
+  background: linear-gradient(145deg, var(--card), var(--card2));
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.enemy-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.enemy-card__name {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.enemy-card__meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.boss-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7a1d1d, #c0392b);
+  color: #fff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Progress Bars ─────────────────────────────────────────── */
+.progress {
+  height: 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress--boss-timer {
+  height: 6px;
+  margin-top: 6px;
+}
+
+.bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--blue), var(--blue-hi));
+  border-radius: 999px;
+  transition: width 0.1s linear;
+}
+
+.bar--boss { background: linear-gradient(90deg, var(--red), #ff8c00); }
+.bar--low  { background: linear-gradient(90deg, var(--red), #f97316); }
+
+/* ── Tap Button ────────────────────────────────────────────── */
+.tap-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 4px;
+  width: 100%;
+}
+
+.tap-btn {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 3px solid var(--gold-dim);
+  background: radial-gradient(circle at 38% 38%, #1e3a6e, #0a1630);
+  color: var(--gold);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow:
+    0 0 20px var(--gold-glow),
+    0 0 50px rgba(42, 102, 255, 0.18),
+    inset 0 2px 6px rgba(255, 255, 255, 0.07);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tap-btn:hover {
+  box-shadow:
+    0 0 30px var(--gold-glow),
+    0 0 70px rgba(42, 102, 255, 0.25),
+    inset 0 2px 6px rgba(255, 255, 255, 0.10);
+}
+
+.tap-btn:active {
+  transform: scale(0.91);
+  box-shadow:
+    0 0 10px var(--gold-glow),
+    inset 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.tap-btn__sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+/* ── Skills Row ────────────────────────────────────────────── */
+.skills-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.skill-btn {
+  flex: 1;
+  max-width: 120px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.skill-btn:hover { border-color: var(--blue); color: var(--ink); }
+
+.skill-btn.skill-active {
+  background: linear-gradient(135deg, #0d2a4e, #162a5e);
+  border-color: var(--blue);
+  color: var(--blue-hi);
+}
+
+.skill-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.skill-btn__name   { font-size: 11px; font-weight: 700; }
+.skill-btn__status { font-size: 10px; color: var(--muted); }
+
+/* ── Log Toggle & Log Panel ────────────────────────────────── */
+.log-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.log-toggle:hover { border-color: var(--blue); color: var(--ink); }
+
+.log-panel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #b8c7ea;
+  line-height: 1.5;
+  max-height: 110px;
+  overflow-y: auto;
+  border-radius: 0 0 10px 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-top: none;
+  background: var(--bg-deep);
+  margin-bottom: 10px;
+}
+
+/* ── Panel Inner Content ───────────────────────────────────── */
+.panel-section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 12px 0 8px;
+}
+
+.panel-section-title:first-child { margin-top: 0; }
+
+/* ── Upgrade / Hero List Items ─────────────────────────────── */
+.upgrade-item {
+  background: linear-gradient(145deg, var(--card), var(--card2));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.upgrade-item:last-child { margin-bottom: 0; }
+
+.upgrade-item__info { flex: 1; min-width: 0; }
+
+.upgrade-item__title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 3px;
+}
+
+.upgrade-item__desc {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.upgrade-item__effect {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 3px 0 0;
+}
+
+/* ── Prestige Card (inside Ascension tab) ──────────────────── */
+.prestige-card {
+  background: linear-gradient(135deg, #1a0828, #200a10);
+  border: 1px solid #4a1a5a;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.prestige-card__title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--purple);
+  margin: 0 0 4px;
+}
+
+.prestige-card__desc {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.prestige-card__preview {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.prestige-card__preview b { color: var(--purple); }
+
+/* ── Stats Toggle (inside Ascension tab) ───────────────────── */
+.stats-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 14px;
+  transition: border-color 0.15s;
+}
+
+.stats-toggle:hover { border-color: var(--blue); color: var(--ink); }
+
+.stats-content {
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  background: var(--bg-deep);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(30, 45, 71, 0.5);
+  font-size: 12px;
+}
+
+.stat-row:last-child { border-bottom: none; }
+.stat-row__label { color: var(--muted); }
+.stat-row__value { font-weight: 700; }
+
+.stat-section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  padding: 8px 0 3px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  min-height: var(--touch-min);
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.1s, transform 0.08s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover   { filter: brightness(1.12); }
+.btn:active  { transform: translateY(1px); }
+.btn.primary { background: linear-gradient(135deg, var(--blue-dim), #1e3a6e); border-color: var(--blue); }
+.btn.danger  { background: linear-gradient(135deg, var(--red-dim), #7a2020); border-color: var(--red); }
+.btn.ascend  { background: linear-gradient(135deg, #2a0d4e, #1a0838); border-color: var(--purple); color: #d0aaff; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* ── Pill Badges ───────────────────────────────────────────── */
+.pill {
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--card2);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pill--gold   { border-color: var(--gold-dim); color: var(--gold); background: rgba(245,197,24,0.08); }
+.pill--purple { border-color: var(--purple);   color: #c5a0ff;    background: rgba(155,89,245,0.1); }
+.pill--blue   { border-color: var(--blue);     color: var(--blue-hi); background: rgba(42,102,255,0.1); }
+.pill--boss   { border-color: var(--red);      color: var(--red); background: rgba(224,84,84,0.1); }
+
+/* ── Legacy / Compatibility Classes ───────────────────────── */
+/* Kept for UpgradeSection panels that still use these class names */
+.row   { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.muted { color: var(--muted); }
+.tiny  { font-size: 11px; color: var(--muted); }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.list  { display: flex; flex-direction: column; gap: 8px; }
+
+.item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: linear-gradient(145deg, var(--card), var(--card2));
+  margin-bottom: 8px;
+}
+
+.item:last-child { margin-bottom: 0; }
+.item h3 { margin: 0 0 4px; font-size: 14px; }
+.item p  { margin: 0; font-size: 12px; color: var(--muted); }
+
+.stat { color: var(--muted); font-size: 12px; }
+.big  { font-size: 28px; font-weight: 900; letter-spacing: 0.2px; }
+
+/* legacy log class (used if logPanel is rendered directly) */
+.log {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #b8c7ea;
+  line-height: 1.5;
+  max-height: 150px;
+  overflow: auto;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+}
+
+/* ── Desktop Layout (min-width: 1024px) ────────────────────── */
+@media (min-width: 1024px) {
+  .app-shell {
+    display: grid;
+    grid-template-areas:
+      "hud     hud"
+      "combat  panel"
+      "combat  nav";
+    grid-template-rows: var(--hud-h) 1fr auto;
+    grid-template-columns: 1fr 400px;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 100dvh;
+  }
+
+  .hud-bar { grid-area: hud; justify-content: flex-start; gap: 28px; padding: 0 24px; }
+
+  .main-scroll { grid-area: combat; overflow-y: auto; }
+
+  .right-panel {
+    grid-area: panel;
+    border-left: 1px solid var(--line);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* On desktop the bottom-nav becomes the tab bar at the TOP of the right panel */
+  .bottom-nav {
+    grid-area: nav;
+    position: static;
+    height: auto;
+    border-top: none;
+    border-bottom: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    flex-shrink: 0;
+    order: -1; /* appear above panel content */
+  }
+
+  .bottom-nav__tab {
+    flex-direction: row;
+    gap: 5px;
+    font-size: 11px;
+    padding: 10px 4px;
+    min-height: 44px;
+  }
+
+  .bottom-nav__icon { font-size: 15px; }
+
+  .bottom-nav__tab.active::before {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .panel-zone { padding: 14px 16px; }
+
+  /* Log always visible on desktop */
+  .log-toggle { display: none; }
+  .log-panel  { display: block !important; max-height: 200px; border-radius: 10px; border: 1px solid var(--line); margin-top: 10px; }
+
+  .tap-btn { width: 130px; height: 130px; font-size: 20px; }
+
+  .combat-zone { padding: 16px 20px 0; }
+
+  .hud-stat__value { font-size: 17px; }
+}
