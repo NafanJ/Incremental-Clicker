@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { defaultState } from '../utils/gameState.js';
 import { load, save } from '../utils/storage.js';
-import { now, SUBSTAGES_PER_STAGE, BOSS_EVERY_STAGE, BOSS_TIME_LIMIT_MS, tapDamage, heroDps, enemyMaxHp, enemyReward, enemyNameFor, globalMult, effectiveCritChance, effectiveCritMult, shardUpgradeCost, shardUpgradeUnlockCost, SHARD_UPGRADES, MILESTONES, SKILLS } from '../utils/gameLogic.js';
+import { now, SUBSTAGES_PER_STAGE, BOSS_EVERY_STAGE, BOSS_TIME_LIMIT_MS, tapDamage, heroDps, enemyMaxHp, enemyReward, enemyNameFor, globalMult, effectiveCritChance, effectiveCritMult, shardUpgradeCost, shardUpgradeUnlockCost, SHARD_UPGRADES, MILESTONES, SKILLS, checkAchievements } from '../utils/gameLogic.js';
 
 export function useGameState() {
   const [state, _setStateRaw] = useState(() => {
@@ -90,7 +90,8 @@ export function useGameState() {
       if (newSubstage > SUBSTAGES_PER_STAGE) {
         newSubstage = 1;
         newStage++;
-        return { ...prev, stage: newStage, substage: newSubstage, bossEntered: false, bossAttemptedThisStage: false };
+        const highest = Math.max(prev.highestStage ?? 1, newStage);
+        return { ...prev, stage: newStage, substage: newSubstage, bossEntered: false, bossAttemptedThisStage: false, highestStage: highest };
       }
       // Auto-enter boss on first reach; after a failed attempt, stay on substage 9
       if (newSubstage === SUBSTAGES_PER_STAGE) {
@@ -146,12 +147,14 @@ export function useGameState() {
     }
   }, [addLog, spawnEnemy, advanceStage]);
 
-  // Tap
+  // Tap — returns { damage, isCrit } for UI feedback (floating numbers)
   const tap = useCallback(() => {
     const dmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, state.shardUpgrades);
     const isCrit = Math.random() < effectiveCritChance(state);
     const finalDmg = isCrit ? dmg * effectiveCritMult(state) : dmg;
     dealDamage(finalDmg, isCrit ? "CRIT tap" : "Tap");
+    setState(prev => ({ ...prev, totalTaps: (prev.totalTaps ?? 0) + 1 }));
+    return { damage: finalDmg, isCrit };
   }, [state, dealDamage]);
 
   // Game tick
@@ -166,7 +169,18 @@ export function useGameState() {
       if (t - s.lastSave > 15000) {
         save(s);
         addLog("Game saved.");
-        setState(prev => ({ ...prev, lastTick: t, lastSave: t }));
+        // Check achievements on save tick (every 15s) to avoid per-frame overhead
+        const newAchievements = checkAchievements(s);
+        if (newAchievements.length > 0) {
+          const updatedAch = { ...s.achievements };
+          for (const a of newAchievements) {
+            updatedAch[a.key] = true;
+            addLog(`Achievement unlocked: ${a.name}!`);
+          }
+          setState(prev => ({ ...prev, lastTick: t, lastSave: t, achievements: { ...prev.achievements, ...updatedAch } }));
+        } else {
+          setState(prev => ({ ...prev, lastTick: t, lastSave: t }));
+        }
       } else {
         setState(prev => ({ ...prev, lastTick: t }));
       }

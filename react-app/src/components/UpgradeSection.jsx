@@ -3,7 +3,7 @@ import {
   upgradeCost, tapTrainingCost, heroCost, fmt, globalMult, now,
   SHARD_UPGRADES, shardUpgradeCost, shardUpgradeUnlockCost,
   MILESTONES, SKILLS, effectiveSkillDuration, effectiveCritChance,
-  effectiveCritMult, tapDamage, heroDps, prestigeEarned,
+  effectiveCritMult, tapDamage, heroDps, prestigeEarned, ACHIEVEMENTS,
 } from '../utils/gameLogic.js';
 import SettingsSection from './SettingsSection.jsx';
 
@@ -325,7 +325,7 @@ function UpgradeSection({
             <div className="prestige-card__title">⚡ Ascend</div>
             <p className="prestige-card__desc">
               Reset your run to gain permanent Ascension Shards.
-              Each shard grants +8% global damage permanently.
+              Each shard grants +10% global damage permanently.
             </p>
             <button
               className="btn danger"
@@ -434,9 +434,37 @@ function UpgradeSection({
               </div>
               <div className="stat-section-title">Progress</div>
               <div className="stat-row">
+                <span className="stat-row__label">Highest Stage</span>
+                <b className="stat-row__value">{state.highestStage ?? 1}</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Total Taps</span>
+                <b className="stat-row__value">{fmt(state.totalTaps ?? 0)}</b>
+              </div>
+              <div className="stat-row">
+                <span className="stat-row__label">Ascensions</span>
+                <b className="stat-row__value">{state.ascensionCount ?? 0}</b>
+              </div>
+              <div className="stat-row">
                 <span className="stat-row__label">Lifetime Gold</span>
                 <b className="stat-row__value">{fmt(state.lifetimeGold)}</b>
               </div>
+              <div className="stat-section-title">
+                Achievements ({ACHIEVEMENTS.filter(a => state.achievements?.[a.key]).length}/{ACHIEVEMENTS.length})
+              </div>
+              {ACHIEVEMENTS.map(a => {
+                const earned = !!(state.achievements?.[a.key]);
+                return (
+                  <div key={a.key} className="stat-row" style={{ opacity: earned ? 1 : 0.4 }}>
+                    <span className="stat-row__label">
+                      {earned ? '\u2713 ' : '\u2022 '}{a.name}
+                    </span>
+                    <span className="stat-row__value" style={{ fontWeight: 400, fontSize: '11px', color: 'var(--muted)' }}>
+                      {a.desc}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 

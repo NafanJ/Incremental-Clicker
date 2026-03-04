@@ -220,6 +220,45 @@ export const SKILLS = [
   },
 ];
 
+// ---------- Achievements ----------
+export const ACHIEVEMENTS = [
+  // Stage milestones
+  { key: 'stage10',     name: 'Getting Started',   desc: 'Reach Stage 10',            check: s => s.highestStage >= 10 },
+  { key: 'stage25',     name: 'Adventurer',         desc: 'Reach Stage 25',            check: s => s.highestStage >= 25 },
+  { key: 'stage50',     name: 'Veteran',             desc: 'Reach Stage 50',            check: s => s.highestStage >= 50 },
+  { key: 'stage100',    name: 'Centurion',           desc: 'Reach Stage 100',           check: s => s.highestStage >= 100 },
+  { key: 'stage200',    name: 'Legend',               desc: 'Reach Stage 200',           check: s => s.highestStage >= 200 },
+  { key: 'stage500',    name: 'Mythic',               desc: 'Reach Stage 500',           check: s => s.highestStage >= 500 },
+  // Tapping
+  { key: 'tap100',      name: 'Clicker',             desc: 'Tap 100 times',             check: s => s.totalTaps >= 100 },
+  { key: 'tap1000',     name: 'Tapper',               desc: 'Tap 1,000 times',           check: s => s.totalTaps >= 1000 },
+  { key: 'tap10000',    name: 'Finger Warrior',       desc: 'Tap 10,000 times',          check: s => s.totalTaps >= 10000 },
+  // Ascension
+  { key: 'ascend1',     name: 'First Ascension',     desc: 'Ascend for the first time', check: s => s.ascensionCount >= 1 },
+  { key: 'ascend5',     name: 'Cycle Breaker',       desc: 'Ascend 5 times',            check: s => s.ascensionCount >= 5 },
+  { key: 'ascend15',    name: 'Eternal Return',       desc: 'Ascend 15 times',           check: s => s.ascensionCount >= 15 },
+  // Wealth
+  { key: 'gold10k',     name: 'Small Fortune',       desc: 'Earn 10K lifetime gold',    check: s => s.lifetimeGold >= 10000 },
+  { key: 'gold1m',      name: 'Millionaire',         desc: 'Earn 1M lifetime gold',     check: s => s.lifetimeGold >= 1000000 },
+  { key: 'gold1b',      name: 'Billionaire',         desc: 'Earn 1B lifetime gold',     check: s => s.lifetimeGold >= 1000000000 },
+  // Heroes
+  { key: 'hero5',       name: 'Squad Leader',         desc: 'Have 5 heroes hired',       check: s => s.heroes.filter(h => h.level > 0).length >= 5 },
+  { key: 'hero10',      name: 'Commander',             desc: 'Have 10 heroes hired',      check: s => s.heroes.filter(h => h.level > 0).length >= 10 },
+  // Shards
+  { key: 'shard50',     name: 'Shard Hoarder',       desc: 'Hold 50 shards at once',    check: s => s.shards >= 50 },
+  { key: 'shard200',    name: 'Shard Master',         desc: 'Hold 200 shards at once',   check: s => s.shards >= 200 },
+];
+
+export function checkAchievements(state) {
+  const newlyEarned = [];
+  for (const a of ACHIEVEMENTS) {
+    if (!state.achievements[a.key] && a.check(state)) {
+      newlyEarned.push(a);
+    }
+  }
+  return newlyEarned;
+}
+
 export function effectiveSkillDuration(skill, shardUpgrades) {
   const bonus = shardUpgrades?.[skill.durationUpgradeKey] ?? 0;
   return Math.min(30, skill.baseDuration + bonus) * 1000; // ms, capped at 30s

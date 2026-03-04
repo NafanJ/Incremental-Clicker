@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fmt, clamp01, now, BOSS_TIME_LIMIT_MS, SKILLS } from '../utils/gameLogic.js';
 
 function LogPanel({ log }) {
@@ -20,6 +20,17 @@ function LogPanel({ log }) {
 
 function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy, activateSkill }) {
   const [bossTimer, setBossTimer] = useState(0);
+  const [floaters, setFloaters] = useState([]);
+  const floaterIdRef = useRef(0);
+
+  const handleTap = useCallback(() => {
+    const result = tap();
+    if (!result) return;
+    const id = ++floaterIdRef.current;
+    const offsetX = Math.round((Math.random() - 0.5) * 60);
+    setFloaters(prev => [...prev, { id, damage: result.damage, isCrit: result.isCrit, offsetX }]);
+    setTimeout(() => setFloaters(prev => prev.filter(f => f.id !== id)), 800);
+  }, [tap]);
 
   useEffect(() => {
     if (!enemy.isBoss) { setBossTimer(0); return; }
@@ -110,10 +121,22 @@ function CombatSection({ state, setState, enemy, log, tap, addLog, spawnEnemy, a
 
       {/* ── Tap Button ── */}
       <div className="tap-zone">
-        <button className="tap-btn" onClick={tap}>
-          TAP
-          <span className="tap-btn__sub">Attack</span>
-        </button>
+        <div className="tap-wrapper">
+          <button className="tap-btn" onClick={handleTap}>
+            TAP
+            <span className="tap-btn__sub">Attack</span>
+          </button>
+          {floaters.map(f => (
+            <span
+              key={f.id}
+              className={`damage-floater${f.isCrit ? ' damage-floater--crit' : ''}`}
+              style={{ left: `calc(50% + ${f.offsetX}px)` }}
+            >
+              {f.isCrit && 'CRIT '}
+              {fmt(f.damage)}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* ── Skills Row ── */}

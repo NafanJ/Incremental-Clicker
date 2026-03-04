@@ -47,7 +47,7 @@ function App() {
       bossAttemptedThisStage: false,
       heroes: prev.heroes.map(h => ({ ...h, level: 0 })),
       upgrades: { tap: 0, gold: 1, idle: 1, critC: 1, critM: 1 },
-      lifetimeGold: 0,
+      ascensionCount: (prev.ascensionCount ?? 0) + 1,
       lastTick: now(),
       lastSave: now(),
     }));
