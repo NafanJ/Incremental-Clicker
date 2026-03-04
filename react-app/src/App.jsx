@@ -57,7 +57,7 @@ function App() {
 
   const hDps = heroDps(
     state.heroes, state.upgrades, state.shards,
-    state.skillActiveUntil, state.milestones, state.shardUpgrades
+    state.skillActiveUntil, state.milestones, state.shardUpgrades, state
   );
 
   return (

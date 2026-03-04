@@ -29,6 +29,11 @@ function SettingsSection({ state, setState, addLog, spawnEnemy }) {
         <button className="btn" onClick={handleSave}>Save</button>
         <button className="btn" onClick={handleLoad}>Load</button>
         <button className="btn" onClick={handleReset}>Hard Reset</button>
+        <button className="btn" onClick={() => {
+          const amount = Math.max(1e15, state.gold * 10);
+          setState(prev => ({ ...prev, gold: prev.gold + amount, lifetimeGold: prev.lifetimeGold + amount }));
+          addLog("Debug: +gold");
+        }}>+Gold (Debug)</button>
       </div>
       <div className="tiny muted">Autosaves every 15 seconds.</div>
     </div>

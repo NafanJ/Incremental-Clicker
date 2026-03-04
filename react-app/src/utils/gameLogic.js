@@ -1,14 +1,24 @@
 // ---------- Helpers ----------
 export const clamp01 = (x) => Math.max(0, Math.min(1, x));
+// Letter notation: K, M, B, T, then aa, ab, ac... az, ba, bb...
+const letterUnit = (tier) => {
+  if (tier <= 0) return "";
+  if (tier === 1) return "K";
+  if (tier === 2) return "M";
+  if (tier === 3) return "B";
+  if (tier === 4) return "T";
+  const idx = tier - 5; // 0 = aa, 1 = ab, ...
+  const first = String.fromCharCode(97 + Math.floor(idx / 26));
+  const second = String.fromCharCode(97 + (idx % 26));
+  return first + second;
+};
 export const fmt = (n) => {
   if (!isFinite(n)) return "∞";
-  const abs = Math.abs(n);
-  if (abs < 1e6) return n.toFixed(2).replace(/\.?0+$/, '').replace(/,/g, ',');
-  const units = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"];
-  let u = 0;
+  if (Math.abs(n) < 1e3) return n.toFixed(2).replace(/\.?0+$/, '');
   let v = n;
-  while (Math.abs(v) >= 1000 && u < units.length - 1) { v /= 1000; u++; }
-  return `${v.toFixed(2)}${units[u]}`;
+  let tier = 0;
+  while (Math.abs(v) >= 1000) { v /= 1000; tier++; }
+  return `${v.toFixed(2)}${letterUnit(tier)}`;
 };
 export const now = () => Date.now();
 
@@ -28,6 +38,7 @@ export function effectiveCritChance(state) {
   const fromMilestone = state.milestones?.dragonsLuck ? 0.05 : 0;
   const fromShard = (state.shardUpgrades?.luckyStrike ?? 0) * 0.03;
   const fromBloodFrenzy = (now() < (state.bloodFrenzyActiveUntil ?? 0)) ? 0.30 : 0;
+  if (now() < (state.luckyStrikeActiveUntil ?? 0)) return 1.0;
   return state.critChance + fromUpgrade + fromMilestone + fromShard + fromBloodFrenzy;
 }
 
@@ -46,17 +57,20 @@ export function tapDamage(tapLevel, tapBase, upgrades, shards, skillActiveUntil,
   return effectiveTapBase * Math.pow(1.15, tapLevel - 1) * globalMult(shards) * skillMult * sharpening * tapSynergy * tapMastery;
 }
 
-export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}) {
+export function heroDps(heroes, upgrades, shards, skillActiveUntil, milestones = {}, shardUpgrades = {}, skillTimers = {}) {
   const idleUpgrade = upgrades.idle;
   let dps = 0;
   for (const h of heroes) {
     if (h.level <= 0) continue;
     dps += h.baseDps * Math.pow(h.dpsMultPerLevel, h.level - 1);
   }
-  const skillMult = (now() < skillActiveUntil) ? 2.0 : 1.0;
+  const t = now();
+  const skillMult = (t < skillActiveUntil) ? 2.0 : 1.0;
+  const rallyCryMult = (t < (skillTimers.rallyCryActiveUntil ?? 0)) ? 3.0 : 1.0;
+  const timeWarpMult = (t < (skillTimers.timeWarpActiveUntil ?? 0)) ? 3.0 : 1.0;
   const formation = milestones.formation ? 1.20 : 1;
   const heroMastery = 1 + (shardUpgrades.heroMastery ?? 0) * 0.12;
-  return dps * idleUpgrade * globalMult(shards) * skillMult * formation * heroMastery;
+  return dps * idleUpgrade * globalMult(shards) * skillMult * rallyCryMult * timeWarpMult * formation * heroMastery;
 }
 
 export function enemyMaxHp(stage, substage, isBoss) {
@@ -102,7 +116,12 @@ export function tapTrainingCost(level) {
 
 export function heroCost(hero) {
   // Cost rises quickly; tuned for MVP feel
-  const base = { squire: 50, archer: 400, mage: 2500, paladin: 15000, necromancer: 80000 }[hero.id] ?? 100;
+  const base = {
+    squire: 50, archer: 400, mage: 2500, paladin: 15000, necromancer: 80000,
+    druid: 350000, samurai: 1500000, warlock: 6000000, valkyrie: 25000000,
+    dragonKnight: 100000000, shadowMonk: 400000000, archmage: 1500000000,
+    titan: 6000000000, celestial: 25000000000, voidLord: 100000000000,
+  }[hero.id] ?? 100;
   return Math.floor(base * Math.pow(1.45, hero.level));
 }
 
@@ -121,6 +140,9 @@ export const SHARD_UPGRADES = [
   { key: 'powerSurgeDuration', name: 'Surge Duration',    desc: '+1s to Power Surge per level (max 30s)', shardBase: 2, costMult: 2,   isDurationUpgrade: true },
   { key: 'goldRushDuration',   name: 'Rush Duration',     desc: '+1s to Gold Rush per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
   { key: 'bloodFrenzyDuration',name: 'Frenzy Duration',   desc: '+1s to Blood Frenzy per level (max 30s)',shardBase: 2, costMult: 2,   isDurationUpgrade: true },
+  { key: 'rallyCryDuration',   name: 'Rally Duration',    desc: '+1s to Rally Cry per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
+  { key: 'luckyStrikeDuration',name: 'Strike Duration',   desc: '+1s to Lucky Strike per level (max 30s)',shardBase: 2, costMult: 2,   isDurationUpgrade: true },
+  { key: 'timeWarpDuration',   name: 'Warp Duration',     desc: '+1s to Time Warp per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
 ];
 
 export function shardUpgradeCost(key, level) {
@@ -163,6 +185,36 @@ export const SKILLS = [
     baseDuration: 8,
     cooldown: 40000,
     durationUpgradeKey: 'bloodFrenzyDuration',
+  },
+  {
+    key: 'rallyCry',
+    name: 'Rally Cry',
+    desc: '3× hero DPS',
+    activeUntilKey: 'rallyCryActiveUntil',
+    cooldownUntilKey: 'rallyCryCooldownUntil',
+    baseDuration: 10,
+    cooldown: 45000,
+    durationUpgradeKey: 'rallyCryDuration',
+  },
+  {
+    key: 'luckyStrike',
+    name: 'Lucky Strike',
+    desc: '100% crit chance',
+    activeUntilKey: 'luckyStrikeActiveUntil',
+    cooldownUntilKey: 'luckyStrikeCooldownUntil',
+    baseDuration: 8,
+    cooldown: 50000,
+    durationUpgradeKey: 'luckyStrikeDuration',
+  },
+  {
+    key: 'timeWarp',
+    name: 'Time Warp',
+    desc: '3× hero attack speed',
+    activeUntilKey: 'timeWarpActiveUntil',
+    cooldownUntilKey: 'timeWarpCooldownUntil',
+    baseDuration: 10,
+    cooldown: 60000,
+    durationUpgradeKey: 'timeWarpDuration',
   },
 ];
 

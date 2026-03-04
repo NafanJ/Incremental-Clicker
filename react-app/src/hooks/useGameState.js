@@ -161,7 +161,7 @@ export function useGameState() {
       const t = now();
       const s = stateRef.current;
       const dt = Math.min(0.25, (t - s.lastTick) / 1000);
-      const dps = heroDps(s.heroes, s.upgrades, s.shards, s.skillActiveUntil, s.milestones, s.shardUpgrades);
+      const dps = heroDps(s.heroes, s.upgrades, s.shards, s.skillActiveUntil, s.milestones, s.shardUpgrades, s);
 
       if (t - s.lastSave > 15000) {
         save(s);

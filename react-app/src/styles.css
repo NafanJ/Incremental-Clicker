@@ -237,10 +237,12 @@ body {
   width: 0%;
   background: linear-gradient(90deg, var(--blue), var(--blue-hi));
   border-radius: 999px;
-  transition: width 0.1s linear;
 }
 
-.bar--boss { background: linear-gradient(90deg, var(--red), #ff8c00); }
+.bar--boss {
+  background: linear-gradient(90deg, var(--red), #ff8c00);
+  transition: width 0.1s linear;
+}
 .bar--low  { background: linear-gradient(90deg, var(--red), #f97316); }
 
 /* ── Tap Button ────────────────────────────────────────────── */
@@ -385,6 +387,33 @@ body {
 }
 
 .panel-section-title:first-child { margin-top: 0; }
+
+/* ── Buy Amount Toggle ────────────────────────────────────── */
+.buy-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  justify-content: flex-end;
+}
+.buy-toggle__btn {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.buy-toggle__btn--active {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: var(--blue-hi);
+}
+.buy-count {
+  font-size: 10px;
+  opacity: 0.7;
+}
 
 /* ── Upgrade / Hero List Items ─────────────────────────────── */
 .upgrade-item {

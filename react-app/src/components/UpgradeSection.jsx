@@ -13,15 +13,79 @@ function UpgradeSection({
   activeTab, activateSkill, handlePrestige,
 }) {
   const [statsOpen, setStatsOpen] = useState(false);
+  const [buyAmount, setBuyAmount] = useState(1); // 1, 5, 10, or 'max'
+
+  // Calculate total cost for buying N levels of an upgrade
+  const bulkUpgradeCost = (key, count) => {
+    let total = 0;
+    const tempUpgrades = { ...state.upgrades };
+    const bump = { tap: 1, gold: 0.20, idle: 0.22, critC: 1, critM: 1 }[key] ?? 1;
+    for (let i = 0; i < count; i++) {
+      total += key === 'tap' ? tapTrainingCost(tempUpgrades.tap) : upgradeCost(key, tempUpgrades);
+      tempUpgrades[key] = +(tempUpgrades[key] + bump).toFixed(2);
+    }
+    return total;
+  };
+
+  // Calculate how many levels of an upgrade we can afford
+  const maxAffordableUpgrades = (key) => {
+    let count = 0;
+    let gold = state.gold;
+    const tempUpgrades = { ...state.upgrades };
+    const bump = { tap: 1, gold: 0.20, idle: 0.22, critC: 1, critM: 1 }[key] ?? 1;
+    while (count < 1000) {
+      const cost = key === 'tap' ? tapTrainingCost(tempUpgrades.tap) : upgradeCost(key, tempUpgrades);
+      if (gold < cost) break;
+      gold -= cost;
+      tempUpgrades[key] = +(tempUpgrades[key] + bump).toFixed(2);
+      count++;
+    }
+    return count;
+  };
+
+  // Calculate total cost for buying N levels of a hero
+  const bulkHeroCost = (hero, count) => {
+    let total = 0;
+    const tempHero = { ...hero };
+    for (let i = 0; i < count; i++) {
+      total += heroCost(tempHero);
+      tempHero.level++;
+    }
+    return total;
+  };
+
+  // Calculate how many hero levels we can afford
+  const maxAffordableHero = (hero) => {
+    let count = 0;
+    let gold = state.gold;
+    const tempHero = { ...hero };
+    while (count < 1000) {
+      const cost = heroCost(tempHero);
+      if (gold < cost) break;
+      gold -= cost;
+      tempHero.level++;
+      count++;
+    }
+    return count;
+  };
+
+  const effectiveBuyCount = (key, isHero, hero) => {
+    if (buyAmount === 'max') {
+      return isHero ? maxAffordableHero(hero) : maxAffordableUpgrades(key);
+    }
+    return buyAmount;
+  };
 
   const handleUpgrade = (key) => {
-    const cost = key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(key, state.upgrades);
-    if (state.gold < cost) return;
+    const count = effectiveBuyCount(key, false);
+    if (count <= 0) return;
+    const totalCost = bulkUpgradeCost(key, count);
+    if (state.gold < totalCost) return;
     setState(prev => {
       const bump = { tap: 1, gold: 0.20, idle: 0.22, critC: 1, critM: 1 }[key] ?? 1;
-      const newUpgrades = { ...prev.upgrades, [key]: +(prev.upgrades[key] + bump).toFixed(2) };
-      addLog(`Bought upgrade: ${key}`);
-      return { ...prev, gold: prev.gold - cost, upgrades: newUpgrades };
+      const newUpgrades = { ...prev.upgrades, [key]: +(prev.upgrades[key] + bump * count).toFixed(2) };
+      addLog(`Bought ${count}× upgrade: ${key}`);
+      return { ...prev, gold: prev.gold - totalCost, upgrades: newUpgrades };
     });
   };
 
@@ -29,12 +93,14 @@ function UpgradeSection({
     const hero = state.heroes.find(h => h.id === heroId);
     if (!hero) return;
     if (state.stage < hero.unlockStage) return;
-    const cost = heroCost(hero);
-    if (state.gold < cost) return;
+    const count = effectiveBuyCount(null, true, hero);
+    if (count <= 0) return;
+    const totalCost = bulkHeroCost(hero, count);
+    if (state.gold < totalCost) return;
     setState(prev => {
-      const newHeroes = prev.heroes.map(h => h.id === heroId ? { ...h, level: h.level + 1 } : h);
-      addLog(`Upgraded ${hero.name} to Lv ${hero.level + 1}`);
-      return { ...prev, gold: prev.gold - cost, heroes: newHeroes };
+      const newHeroes = prev.heroes.map(h => h.id === heroId ? { ...h, level: h.level + count } : h);
+      addLog(`Upgraded ${hero.name} to Lv ${hero.level + count}`);
+      return { ...prev, gold: prev.gold - totalCost, heroes: newHeroes };
     });
   };
 
@@ -78,21 +144,39 @@ function UpgradeSection({
   const earn = prestigeEarned(state.stage, state.substage, su);
   const gMult = globalMult(state.shards);
   const tapDmg = tapDamage(state.tapLevel, state.tapBase, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
-  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su);
+  const hDps = heroDps(state.heroes, state.upgrades, state.shards, state.skillActiveUntil, state.milestones, su, state);
   const critChance = effectiveCritChance(state);
   const critMult = effectiveCritMult(state);
   const goldMult = state.upgrades.gold * (1 + (su.goldBonus ?? 0) * 0.25) * (state.milestones?.goldVein ? 1.30 : 1);
   const bossGoldMult = goldMult * (1 + (su.bossBane ?? 0) * 0.20);
 
+  const buyLabel = buyAmount === 'max' ? 'Max' : `×${buyAmount}`;
+
   return (
     <div>
+
+      {/* ── Buy Amount Toggle ── */}
+      {(activeTab === 'upgrades' || activeTab === 'heroes') && (
+        <div className="buy-toggle">
+          {[1, 5, 10, 'max'].map(amt => (
+            <button
+              key={amt}
+              className={`buy-toggle__btn${buyAmount === amt ? ' buy-toggle__btn--active' : ''}`}
+              onClick={() => setBuyAmount(amt)}
+            >
+              {amt === 'max' ? 'Max' : `×${amt}`}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Upgrades Tab ── */}
       {activeTab === 'upgrades' && (
         <div>
           {upgradeList.map(u => {
-            const cost = u.key === 'tap' ? tapTrainingCost(state.upgrades.tap) : upgradeCost(u.key, state.upgrades);
-            const canAfford = state.gold >= cost;
+            const count = effectiveBuyCount(u.key, false);
+            const totalCost = count > 0 ? bulkUpgradeCost(u.key, count) : 0;
+            const canAfford = count > 0 && state.gold >= totalCost;
             return (
               <div key={u.key} className="upgrade-item">
                 <div className="upgrade-item__info">
@@ -105,7 +189,8 @@ function UpgradeSection({
                   disabled={!canAfford}
                   onClick={() => handleUpgrade(u.key)}
                 >
-                  {fmt(cost)}g
+                  {count > 0 ? `${fmt(totalCost)}g` : fmt(0) + 'g'}
+                  {count > 1 && <span className="buy-count"> ×{count}</span>}
                 </button>
               </div>
             );
@@ -116,10 +201,15 @@ function UpgradeSection({
       {/* ── Heroes Tab ── */}
       {activeTab === 'heroes' && (
         <div>
-          {state.heroes.map(h => {
+          {state.heroes.filter((h, i, arr) => {
             const unlocked = state.stage >= h.unlockStage;
-            const cost = heroCost(h);
-            const canAfford = unlocked && state.gold >= cost;
+            const isNextLocked = !unlocked && (i === 0 || state.stage >= arr[i - 1].unlockStage);
+            return unlocked || isNextLocked;
+          }).map(h => {
+            const unlocked = state.stage >= h.unlockStage;
+            const count = unlocked ? effectiveBuyCount(null, true, h) : 0;
+            const totalCost = count > 0 ? bulkHeroCost(h, count) : 0;
+            const canAfford = unlocked && count > 0 && state.gold >= totalCost;
             const currentDps = h.level > 0
               ? h.baseDps * Math.pow(h.dpsMultPerLevel, h.level - 1)
                 * state.upgrades.idle * gMult
@@ -142,7 +232,9 @@ function UpgradeSection({
                   disabled={!canAfford}
                   onClick={() => handleHeroUpgrade(h.id)}
                 >
-                  {unlocked ? `${fmt(cost)}g` : `Stage ${h.unlockStage}`}
+                  {unlocked
+                    ? <>{fmt(totalCost)}g{count > 1 && <span className="buy-count"> ×{count}</span>}</>
+                    : `Stage ${h.unlockStage}`}
                 </button>
               </div>
             );

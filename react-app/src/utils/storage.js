@@ -31,15 +31,11 @@ export function load() {
     }
     merged.saveVersion = 2;
     merged.milestones = { ...fresh.milestones, ...(data.milestones ?? {}) };
-    // Ensure heroes exist and merge their levels (in case of updates)
-    if (Array.isArray(data.heroes) && data.heroes.length > 0) {
-      for (let i = 0; i < merged.heroes.length; i++) {
-        const savedHero = data.heroes.find(h => h.id === merged.heroes[i].id);
-        if (savedHero) {
-          merged.heroes[i].level = savedHero.level;
-        }
-      }
-    }
+    // Always use fresh heroes list (picks up new heroes), merge saved levels in
+    merged.heroes = fresh.heroes.map(h => {
+      const saved = Array.isArray(data.heroes) && data.heroes.find(s => s.id === h.id);
+      return saved ? { ...h, level: saved.level } : h;
+    });
 
     // Offline progress (basic): simulate hero DPS for up to 8 hours
     const savedAt = data.savedAt ?? Date.now();
