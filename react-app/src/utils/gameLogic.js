@@ -30,7 +30,7 @@ export const TAP_TRAINING_BONUS_PER_SESSION = 0.5;
 
 export function globalMult(shards) {
   // Permanent shard power: simple and satisfying
-  return 1 + shards * 0.08; // 8% per shard
+  return 1 + shards * 0.10; // 10% per shard
 }
 
 export function effectiveCritChance(state) {
@@ -92,9 +92,11 @@ export function enemyReward(stage, substage, isBoss, upgrades, shardUpgrades = {
 export function prestigeEarned(stage, substage, shardUpgrades = {}) {
   // Reward based on stage reached (roughly)
   const reached = (stage - 1) * SUBSTAGES_PER_STAGE + (substage - 1);
-  // Quadratic-ish curve that feels good
+  // Generous curve so prestige feels rewarding
   const soulBonus = Math.floor((shardUpgrades.soulCollector ?? 0) * 0.5);
-  return Math.max(0, Math.floor(Math.pow(reached / 40, 1.35))) + (shardUpgrades.prestigeBonus ?? 0) + soulBonus;
+  const base = Math.max(0, Math.floor(Math.pow(reached / 30, 1.5)));
+  const prestigeMult = 1 + (shardUpgrades.prestigeBonus ?? 0) * 0.20;
+  return Math.floor(base * prestigeMult) + soulBonus;
 }
 
 export function enemyNameFor(stage, isBoss) {
@@ -126,23 +128,23 @@ export function heroCost(hero) {
 }
 
 export const SHARD_UPGRADES = [
-  { key: 'goldBonus',     name: 'Fortune',          desc: '+25% gold income per level',             shardBase: 2, costMult: 3   },
-  { key: 'bossTime',      name: 'Boss Extension',    desc: '+5s boss timer per level',               shardBase: 2, costMult: 3   },
-  { key: 'prestigeBonus', name: 'Prestige Mastery',  desc: '+1 bonus shard per ascension',           shardBase: 5, costMult: 4   },
-  { key: 'headStart',     name: 'Head Start',        desc: 'Begin at stage 2+lv after ascend',       shardBase: 3, costMult: 3.5 },
-  { key: 'tapSynergy',    name: 'Tap Synergy',       desc: '+15% tap damage per level',              shardBase: 3, costMult: 3   },
-  { key: 'heroMastery',   name: 'Hero Mastery',      desc: '+12% hero DPS per level',                shardBase: 3, costMult: 3   },
-  { key: 'luckyStrike',   name: 'Lucky Strike',      desc: '+3% crit chance per level',              shardBase: 4, costMult: 3.5 },
-  { key: 'killingBlow',   name: 'Killing Blow',      desc: '+1× crit multiplier per level',          shardBase: 4, costMult: 3.5 },
-  { key: 'bossBane',      name: 'Boss Bane',         desc: '+20% boss gold reward per level',        shardBase: 4, costMult: 3.5 },
-  { key: 'soulCollector', name: 'Soul Collector',    desc: '+0.5 bonus shards per ascension/level',  shardBase: 6, costMult: 4   },
-  { key: 'tapMastery',          name: 'Focused Strike',    desc: '+20% tap damage per level',              shardBase: 4, costMult: 3.5 },
-  { key: 'powerSurgeDuration', name: 'Surge Duration',    desc: '+1s to Power Surge per level (max 30s)', shardBase: 2, costMult: 2,   isDurationUpgrade: true },
-  { key: 'goldRushDuration',   name: 'Rush Duration',     desc: '+1s to Gold Rush per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
-  { key: 'bloodFrenzyDuration',name: 'Frenzy Duration',   desc: '+1s to Blood Frenzy per level (max 30s)',shardBase: 2, costMult: 2,   isDurationUpgrade: true },
-  { key: 'rallyCryDuration',   name: 'Rally Duration',    desc: '+1s to Rally Cry per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
-  { key: 'luckyStrikeDuration',name: 'Strike Duration',   desc: '+1s to Lucky Strike per level (max 30s)',shardBase: 2, costMult: 2,   isDurationUpgrade: true },
-  { key: 'timeWarpDuration',   name: 'Warp Duration',     desc: '+1s to Time Warp per level (max 30s)',   shardBase: 2, costMult: 2,   isDurationUpgrade: true },
+  { key: 'goldBonus',     name: 'Fortune',          desc: '+25% gold income per level',             shardBase: 2, costMult: 2   },
+  { key: 'bossTime',      name: 'Boss Extension',    desc: '+5s boss timer per level',               shardBase: 2, costMult: 2   },
+  { key: 'prestigeBonus', name: 'Prestige Mastery',  desc: '+20% shards earned per ascension',       shardBase: 5, costMult: 3   },
+  { key: 'headStart',     name: 'Head Start',        desc: 'Begin at stage 2+lv after ascend',       shardBase: 3, costMult: 2   },
+  { key: 'tapSynergy',    name: 'Tap Synergy',       desc: '+15% tap damage per level',              shardBase: 3, costMult: 2   },
+  { key: 'heroMastery',   name: 'Hero Mastery',      desc: '+12% hero DPS per level',                shardBase: 3, costMult: 2   },
+  { key: 'luckyStrike',   name: 'Lucky Strike',      desc: '+3% crit chance per level',              shardBase: 4, costMult: 2.5 },
+  { key: 'killingBlow',   name: 'Killing Blow',      desc: '+1× crit multiplier per level',          shardBase: 4, costMult: 2.5 },
+  { key: 'bossBane',      name: 'Boss Bane',         desc: '+20% boss gold reward per level',        shardBase: 4, costMult: 2.5 },
+  { key: 'soulCollector', name: 'Soul Collector',    desc: '+0.5 bonus shards per ascension/level',  shardBase: 6, costMult: 3   },
+  { key: 'tapMastery',          name: 'Focused Strike',    desc: '+20% tap damage per level',              shardBase: 4, costMult: 2.5 },
+  { key: 'powerSurgeDuration', name: 'Surge Duration',    desc: '+1s to Power Surge per level (max 30s)', shardBase: 2, costMult: 1.8, isDurationUpgrade: true },
+  { key: 'goldRushDuration',   name: 'Rush Duration',     desc: '+1s to Gold Rush per level (max 30s)',   shardBase: 2, costMult: 1.8, isDurationUpgrade: true },
+  { key: 'bloodFrenzyDuration',name: 'Frenzy Duration',   desc: '+1s to Blood Frenzy per level (max 30s)',shardBase: 2, costMult: 1.8, isDurationUpgrade: true },
+  { key: 'rallyCryDuration',   name: 'Rally Duration',    desc: '+1s to Rally Cry per level (max 30s)',   shardBase: 2, costMult: 1.8, isDurationUpgrade: true },
+  { key: 'luckyStrikeDuration',name: 'Strike Duration',   desc: '+1s to Lucky Strike per level (max 30s)',shardBase: 2, costMult: 1.8, isDurationUpgrade: true },
+  { key: 'timeWarpDuration',   name: 'Warp Duration',     desc: '+1s to Time Warp per level (max 30s)',   shardBase: 2, costMult: 1.8, isDurationUpgrade: true },
 ];
 
 export function shardUpgradeCost(key, level) {
@@ -151,7 +153,7 @@ export function shardUpgradeCost(key, level) {
 }
 
 export function shardUpgradeUnlockCost(unlockedCount) {
-  return Math.ceil(2 * Math.pow(2, unlockedCount));
+  return Math.ceil(2 * Math.pow(1.75, unlockedCount));
 }
 
 // ---------- Skills ----------
