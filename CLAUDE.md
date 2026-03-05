@@ -32,15 +32,19 @@ Incremental-Clicker/
         ├── assets/
         │   └── react.svg
         ├── hooks/
-        │   └── useGameState.js  # Central game state hook — the main logic hub
+        │   ├── useGameState.js       # Central game state hook — the main logic hub
+        │   └── useGameState.test.js  # Unit tests for the game state hook
         ├── utils/
-        │   ├── gameLogic.js     # Balance formulas, cost scaling, damage/reward math
-        │   ├── gameState.js     # Default state shape (heroes, upgrades, milestones)
-        │   └── storage.js       # LocalStorage persistence & offline progress sim
+        │   ├── gameLogic.js          # Balance formulas, cost scaling, damage/reward math
+        │   ├── gameLogic.test.js     # Unit tests for game logic formulas
+        │   ├── gameState.js          # Default state shape (heroes, upgrades, milestones)
+        │   ├── gameState.test.js     # Unit tests for default state
+        │   ├── storage.js            # LocalStorage persistence & offline progress sim
+        │   └── storage.test.js       # Unit tests for storage/persistence
+        ├── test-setup.js             # Vitest/jsdom test environment setup
         └── components/
             ├── CombatSection.jsx    # Battle UI, prestige, game log
             ├── UpgradeSection.jsx   # Upgrades / Heroes / Ascension / Milestones tabs
-            ├── StatsBar.jsx         # Real-time stat readout
             └── SettingsSection.jsx  # Save / Load / Hard Reset
 ```
 
@@ -57,6 +61,7 @@ Incremental-Clicker/
 | State management | React hooks (`useState`, `useRef`, `useCallback`, `useEffect`) |
 | Persistence | Browser `localStorage` |
 | Linting | ESLint 9 (flat config) |
+| Testing | Vitest + @testing-library/react + @testing-library/jest-dom |
 
 ---
 
@@ -72,9 +77,9 @@ npm run dev        # Start dev server with HMR (Vite)
 npm run build      # Production build → dist/
 npm run preview    # Serve the production build locally
 npm run lint       # Run ESLint
+npm run test       # Run all tests (Vitest, single pass)
+npm run test:watch # Run tests in watch mode
 ```
-
-There are no tests in this project.
 
 ---
 
@@ -207,6 +212,12 @@ When investigating a bug or adding a feature, start with:
 ### Adding persistence for a new field
 - Add the field with a default value to `gameState.js`
 - The merge-on-load logic in `storage.js` (`loadGame`) will safely handle it for existing saves
+
+### Running tests
+- `npm run test` — single-pass run via Vitest (CI-friendly)
+- `npm run test:watch` — watch mode for development
+- Test files live alongside the source they test (e.g., `gameLogic.test.js` next to `gameLogic.js`)
+- When adding a new util or hook, add a corresponding `.test.js` file
 
 ---
 
