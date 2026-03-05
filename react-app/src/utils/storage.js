@@ -55,10 +55,11 @@ export function load() {
       var maxIterations = 5000;
       var iterations = 0;
 
+      // If starting on a boss substage, skip to next stage
+      if (substage === SUBSTAGES) { stage++; substage = 1; }
+
       while (simTimeLeft > 0 && iterations < maxIterations) {
         iterations++;
-        // Skip bosses offline - player should fight them manually
-        if (substage === SUBSTAGES) break;
 
         var hp = enemyMaxHp(stage, substage, false);
         var timeToKill = hp / dps;
@@ -68,14 +69,14 @@ export function load() {
         simTimeLeft -= timeToKill;
         var reward = enemyReward(stage, substage, false, merged.upgrades, merged.shardUpgrades ?? {}, merged.milestones ?? {});
         totalGold += reward;
+        stagesCleared++;
 
-        // Advance substage
+        // Advance substage; skip boss and move to next stage
         substage++;
         if (substage >= SUBSTAGES) {
-          // Reached boss substage - stop here
-          break;
+          stage++;
+          substage = 1;
         }
-        stagesCleared++;
       }
 
       if (totalGold > 0) {
@@ -84,7 +85,7 @@ export function load() {
         merged.stage = stage;
         merged.substage = substage;
         if (stage > (merged.highestStage ?? 1)) merged.highestStage = stage;
-        var minutes = Math.floor((simMs / 1000 - simTimeLeft) / 60);
+        var minutes = Math.floor(simMs / 1000 / 60);
         var stageNote = stagesCleared > 0 ? ", advanced " + stagesCleared + " substages" : "";
         merged.offlineLog = "Offline progress: +" + fmt(totalGold) + " gold" + stageNote + " (" + minutes + " min simulated).";
       }

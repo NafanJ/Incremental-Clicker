@@ -20,7 +20,7 @@ describe('defaultState', () => {
   it('critM upgrade starts at level 1', () => expect(defaultState().upgrades.critM).toBe(1));
 
   describe('heroes', () => {
-    it('has exactly 5 heroes', () => expect(defaultState().heroes).toHaveLength(5));
+    it('has exactly 15 heroes', () => expect(defaultState().heroes).toHaveLength(15));
 
     it('all heroes start at level 0', () => {
       expect(defaultState().heroes.every(h => h.level === 0)).toBe(true);
@@ -28,7 +28,7 @@ describe('defaultState', () => {
 
     it('hero IDs are in the expected order', () => {
       const ids = defaultState().heroes.map(h => h.id);
-      expect(ids).toEqual(['squire', 'archer', 'mage', 'paladin', 'necromancer']);
+      expect(ids).toEqual(['squire', 'archer', 'mage', 'paladin', 'necromancer', 'druid', 'samurai', 'warlock', 'valkyrie', 'dragonKnight', 'shadowMonk', 'archmage', 'titan', 'celestial', 'voidLord']);
     });
 
     it('hero unlock stages are correct', () => {
@@ -60,8 +60,8 @@ describe('defaultState', () => {
   });
 
   describe('shardUpgrades', () => {
-    it('has all 14 shard upgrade keys', () => {
-      expect(Object.keys(defaultState().shardUpgrades)).toHaveLength(14);
+    it('has all 17 shard upgrade keys', () => {
+      expect(Object.keys(defaultState().shardUpgrades)).toHaveLength(17);
     });
 
     it('all shard upgrades default to level 0', () => {

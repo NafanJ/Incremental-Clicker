@@ -15,6 +15,7 @@ const letterUnit = (tier) => {
 export const fmt = (n) => {
   if (!isFinite(n)) return "∞";
   if (Math.abs(n) < 1e3) return n.toFixed(2).replace(/\.?0+$/, '');
+  if (Math.abs(n) < 1e6) return Math.floor(n).toString();
   let v = n;
   let tier = 0;
   while (Math.abs(v) >= 1000) { v /= 1000; tier++; }
@@ -30,7 +31,7 @@ export const TAP_TRAINING_BONUS_PER_SESSION = 0.5;
 
 export function globalMult(shards) {
   // Permanent shard power: simple and satisfying
-  return 1 + shards * 0.10; // 10% per shard
+  return 1 + shards * 0.08; // 8% per shard
 }
 
 export function effectiveCritChance(state) {
@@ -94,9 +95,9 @@ export function prestigeEarned(stage, substage, shardUpgrades = {}) {
   const reached = (stage - 1) * SUBSTAGES_PER_STAGE + (substage - 1);
   // Generous curve so prestige feels rewarding
   const soulBonus = Math.floor((shardUpgrades.soulCollector ?? 0) * 0.5);
-  const base = Math.max(0, Math.floor(Math.pow(reached / 30, 1.5)));
-  const prestigeMult = 1 + (shardUpgrades.prestigeBonus ?? 0) * 0.20;
-  return Math.floor(base * prestigeMult) + soulBonus;
+  const base = Math.max(0, Math.floor(Math.pow(reached / 40, 1.35)));
+  const prestigeBonus = shardUpgrades.prestigeBonus ?? 0;
+  return base + soulBonus + prestigeBonus;
 }
 
 export function enemyNameFor(stage, isBoss) {
@@ -128,9 +129,9 @@ export function heroCost(hero) {
 }
 
 export const SHARD_UPGRADES = [
-  { key: 'goldBonus',     name: 'Fortune',          desc: '+25% gold income per level',             shardBase: 2, costMult: 2   },
+  { key: 'goldBonus',     name: 'Fortune',          desc: '+25% gold income per level',             shardBase: 2, costMult: 3   },
   { key: 'bossTime',      name: 'Boss Extension',    desc: '+5s boss timer per level',               shardBase: 2, costMult: 2   },
-  { key: 'prestigeBonus', name: 'Prestige Mastery',  desc: '+20% shards earned per ascension',       shardBase: 5, costMult: 3   },
+  { key: 'prestigeBonus', name: 'Prestige Mastery',  desc: '+20% shards earned per ascension',       shardBase: 5, costMult: 4   },
   { key: 'headStart',     name: 'Head Start',        desc: 'Begin at stage 2+lv after ascend',       shardBase: 3, costMult: 2   },
   { key: 'tapSynergy',    name: 'Tap Synergy',       desc: '+15% tap damage per level',              shardBase: 3, costMult: 2   },
   { key: 'heroMastery',   name: 'Hero Mastery',      desc: '+12% hero DPS per level',                shardBase: 3, costMult: 2   },
@@ -153,7 +154,7 @@ export function shardUpgradeCost(key, level) {
 }
 
 export function shardUpgradeUnlockCost(unlockedCount) {
-  return Math.ceil(2 * Math.pow(1.75, unlockedCount));
+  return Math.ceil(2 * Math.pow(2, unlockedCount));
 }
 
 // ---------- Skills ----------
